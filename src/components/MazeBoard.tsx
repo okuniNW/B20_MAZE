@@ -273,10 +273,12 @@ export default function MazeBoard({
       }
     }
 
-    // 3. Inject Collectibles
+    // 3. Inject Collectibles (with safety attempts limits to prevent infinite freeze loops)
     // Gas Nodes (Gwei savers)
     let gasPlaced = 0;
-    while (gasPlaced < config.gasCount) {
+    let gasAttempts = 0;
+    while (gasPlaced < config.gasCount && gasAttempts < 300) {
+      gasAttempts++;
       const rx = Math.floor(Math.random() * cols);
       const ry = Math.floor(Math.random() * rows);
       // Don't place on start, exit, or existing items
@@ -294,7 +296,9 @@ export default function MazeBoard({
 
     // Validator Nodes (power-ups)
     let valPlaced = 0;
-    while (valPlaced < config.valCount) {
+    let valAttempts = 0;
+    while (valPlaced < config.valCount && valAttempts < 300) {
+      valAttempts++;
       const rx = Math.floor(Math.random() * cols);
       const ry = Math.floor(Math.random() * rows);
       if (
@@ -314,8 +318,10 @@ export default function MazeBoard({
       // Create a pair of portals
       let portalA: { x: number; y: number } | null = null;
       let portalB: { x: number; y: number } | null = null;
+      let portalAttempts = 0;
 
-      while (!portalA) {
+      while (!portalA && portalAttempts < 200) {
+        portalAttempts++;
         const rx = Math.floor(Math.random() * (cols / 2));
         const ry = Math.floor(Math.random() * (rows / 2));
         if ((rx !== 0 || ry !== 0) && !initialGrid[ry][rx].isGasNode && !initialGrid[ry][rx].isValidatorNode) {
@@ -323,7 +329,9 @@ export default function MazeBoard({
         }
       }
 
-      while (!portalB) {
+      portalAttempts = 0;
+      while (!portalB && portalAttempts < 200) {
+        portalAttempts++;
         const rx = Math.floor(cols / 2 + Math.random() * (cols / 2));
         const ry = Math.floor(rows / 2 + Math.random() * (rows / 2));
         if ((rx !== cols - 1 || ry !== rows - 1) && !initialGrid[ry][rx].isGasNode && !initialGrid[ry][rx].isValidatorNode) {
@@ -331,38 +339,41 @@ export default function MazeBoard({
         }
       }
 
-      initialGrid[portalA.y][portalA.x].isPortal = true;
-      initialGrid[portalA.y][portalA.x].portalTarget = portalB;
+      if (portalA && portalB) {
+        initialGrid[portalA.y][portalA.x].isPortal = true;
+        initialGrid[portalA.y][portalA.x].portalTarget = portalB;
 
-      initialGrid[portalB.y][portalB.x].isPortal = true;
-      initialGrid[portalB.y][portalB.x].portalTarget = portalA;
+        initialGrid[portalB.y][portalB.x].isPortal = true;
+        initialGrid[portalB.y][portalB.x].portalTarget = portalA;
+      }
     }
 
-    // 4. Inject Special Tokens (Rarer spawn rate: 45% chance of level containing keys, max 1 on small, max 2 on large)
+    // 4. Inject Special Tokens (Rarer spawn rate: 70% chance of level containing keys, max 1 on small, max 2 on large)
+    // Uses a guaranteed while loop placement for robust and reliable key item dropping.
     let keysPlaced = 0;
     const maxKeys = cols <= 10 ? 1 : 2;
-    const hasKeysThisLevel = Math.random() < 0.45;
+    const hasKeysThisLevel = Math.random() < 0.70;
 
     if (hasKeysThisLevel) {
-      for (let y = 0; y < rows; y++) {
-        for (let x = 0; x < cols; x++) {
-          if (keysPlaced >= maxKeys) break;
-          const cell = initialGrid[y][x];
-          // Don't place on start, exit, portals, gas nodes, or validator nodes
-          if (
-            (x === 0 && y === 0) ||
-            (x === cols - 1 && y === rows - 1) ||
-            cell.isGasNode ||
-            cell.isValidatorNode ||
-            cell.isPortal
-          ) {
-            continue;
-          }
-          if (Math.random() < 0.02) { // 2% chance per cell
-            cell.isSpecialToken = true;
-            keysPlaced++;
-          }
+      let keyAttempts = 0;
+      while (keysPlaced < maxKeys && keyAttempts < 300) {
+        keyAttempts++;
+        const rx = Math.floor(Math.random() * cols);
+        const ry = Math.floor(Math.random() * rows);
+        const cell = initialGrid[ry][rx];
+        // Don't place on start, exit, portals, gas nodes, or validator nodes
+        if (
+          (rx === 0 && ry === 0) ||
+          (rx === cols - 1 && ry === rows - 1) ||
+          cell.isGasNode ||
+          cell.isValidatorNode ||
+          cell.isPortal ||
+          cell.isSpecialToken
+        ) {
+          continue;
         }
+        cell.isSpecialToken = true;
+        keysPlaced++;
       }
     }
 
@@ -502,8 +513,8 @@ export default function MazeBoard({
     else if (dy === 1 && !currentCell.walls.bottom) canMove = true;
     else if (dx === -1 && !currentCell.walls.left) canMove = true;
 
-    // 2. Passive Validator Booster: automatically break firewall on contact if tokens available or noclipped is pre-activated
-    if (!canMove && (stats.isNoclipped || stats.validatorTokens > 0)) {
+    // 2. Validator Booster: break firewall on contact ONLY if pre-activated by pressing "Gunakan Bypass" (isNoclipped is true)
+    if (!canMove && stats.isNoclipped) {
       const targetX = player.x + dx;
       const targetY = player.y + dy;
       if (targetX >= 0 && targetX < cols && targetY >= 0 && targetY < rows) {
