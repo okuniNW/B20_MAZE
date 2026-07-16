@@ -8,10 +8,10 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   
   --color-cerulean-sky: #0052FF;
-  --color-deep-navy: #0052FF;
-  --color-warm-red: #0052FF;
+  --color-deep-navy: #061d33;
+  --color-warm-red: #EF4444;
   --color-cloud-white: #FFFFFF;
-  --color-ink-dark: #0052FF;
+  --color-ink-dark: #0A0A0A;
 }
 
 /* Custom scrollbar for game elements using pure blue/white */
@@ -32,10 +32,10 @@
 
 /* Cora-specific stylistic elements with premium overlays */
 .cora-canvas {
-  background-color: #0A0A0A;
+  background-color: #FFFFFF;
   background-image: 
-    linear-gradient(to bottom, rgba(10, 10, 10, 0.55), rgba(10, 10, 10, 0.9)), 
-    radial-gradient(circle at 50% 40%, rgba(0, 82, 255, 0.18) 0%, rgba(10, 10, 10, 0) 70%),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.95)), 
+    radial-gradient(circle at 50% 40%, rgba(0, 82, 255, 0.05) 0%, rgba(255, 255, 255, 0) 70%),
     url("./assets/images/neoclassical_facade_1784182720447.jpg");
   background-size: cover;
   background-position: center;
@@ -44,20 +44,20 @@
 }
 
 .cora-desk-card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(20px);
-  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.4),
-              inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 82, 255, 0.12);
+  backdrop-filter: blur(24px);
+  box-shadow: 0 10px 40px -10px rgba(0, 82, 255, 0.06),
+              inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  color: #061d33;
 }
 
 .cora-desk-card-active {
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(0, 82, 255, 0.4);
-  box-shadow: 0 15px 45px -10px rgba(0, 82, 255, 0.25),
-              inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 82, 255, 0.35);
+  box-shadow: 0 15px 45px -10px rgba(0, 82, 255, 0.15),
+              inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  color: #061d33;
 }
 
 .cora-btn-primary {
@@ -78,16 +78,15 @@
 
 .cora-btn-secondary {
   background-color: transparent;
-  color: #FFFFFF;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
+  color: #0052FF;
+  border: 1px solid rgba(0, 82, 255, 0.2);
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .cora-btn-secondary:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: #FFFFFF;
-  border-color: rgba(255, 255, 255, 0.3);
+  background-color: rgba(0, 82, 255, 0.05);
+  color: #0052FF;
+  border-color: #0052FF;
 }
 
 .cora-stamp-accent {

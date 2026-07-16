@@ -168,10 +168,10 @@ export default function Onboarding({ onStart, lang, theme = 'light', specialToke
         transition={{ delay: 0.1, duration: 0.6 }}
         className="text-center mb-10 max-w-xl"
       >
-        <h1 className="text-4xl sm:text-5xl font-serif font-extrabold tracking-tight text-white leading-tight">
+        <h1 className="text-4xl sm:text-5xl font-serif font-extrabold tracking-tight text-deep-navy leading-tight">
           Find Your Way to B20
         </h1>
-        <p className="mt-4 text-sm sm:text-base leading-relaxed text-white/80 font-sans font-normal">
+        <p className="mt-4 text-sm sm:text-base leading-relaxed text-slate-600 font-sans font-normal">
           Explore the maze, collect essential B20 components, unlock hidden paths, and reach the launch portal. Learn the new B20 token standard while enjoying an interactive adventure built on Base.
         </p>
       </motion.div>
@@ -197,12 +197,12 @@ export default function Onboarding({ onStart, lang, theme = 'light', specialToke
             />
 
             {/* Glowing Icon Wrapper */}
-            <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-3.5 bg-white/10 border border-white/15 text-white shadow-inner group-hover:scale-105 transition-transform duration-300">
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-3.5 bg-[#0052FF]/10 border border-[#0052FF]/15 text-[#0052FF] shadow-inner group-hover:scale-105 transition-transform duration-300">
               {feat.icon}
             </div>
 
-            <h3 className="text-xs font-bold tracking-wider uppercase text-white mb-2 font-serif">{feat.title}</h3>
-            <p className="text-[11px] leading-relaxed text-white/70">
+            <h3 className="text-xs font-bold tracking-wider uppercase text-deep-navy mb-2 font-serif">{feat.title}</h3>
+            <p className="text-[11px] leading-relaxed text-slate-500">
               {feat.desc}
             </p>
           </div>
@@ -215,10 +215,10 @@ export default function Onboarding({ onStart, lang, theme = 'light', specialToke
         initial={{ y: 15, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.3, duration: 0.6 }}
-        className="w-full max-w-xl p-6 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] font-sans"
+        className="w-full max-w-xl p-6 rounded-3xl border border-[#0052FF]/12 bg-white/90 backdrop-blur-xl shadow-[0_20px_50px_rgba(0,82,255,0.06)] font-sans"
       >
         <div className="mb-5">
-          <label className="block text-[10px] font-mono uppercase tracking-widest mb-2.5 text-white/60 font-bold">
+          <label className="block text-[10px] font-mono uppercase tracking-widest mb-2.5 text-deep-navy/60 font-bold">
             {t.input_label}
           </label>
           <input
@@ -231,10 +231,10 @@ export default function Onboarding({ onStart, lang, theme = 'light', specialToke
               if (error) setError('');
             }}
             placeholder={t.input_placeholder}
-            className="w-full border border-white/10 focus:border-[#0052FF] focus:ring-1 focus:ring-[#0052FF]/30 rounded-xl px-4 py-3.5 text-sm outline-none transition-all duration-300 font-mono bg-black/40 text-white placeholder-white/30"
+            className="w-full border border-slate-200 focus:border-[#0052FF] focus:ring-1 focus:ring-[#0052FF]/30 rounded-xl px-4 py-3.5 text-sm outline-none transition-all duration-300 font-mono bg-slate-50 text-deep-navy placeholder-slate-400"
           />
           {error && (
-            <p className="text-xs text-red-400 mt-2 font-mono flex items-center gap-1 font-bold">
+            <p className="text-xs text-red-500 mt-2 font-mono flex items-center gap-1 font-bold">
               • {error}
             </p>
           )}
@@ -242,14 +242,14 @@ export default function Onboarding({ onStart, lang, theme = 'light', specialToke
 
         <button
           type="submit"
-          className="w-full font-sans font-bold py-4 px-6 rounded-xl flex items-center justify-center gap-2 text-white bg-[#0052FF] hover:bg-[#0052FF]/95 active:scale-[0.99] shadow-[0_4px_20px_rgba(0,82,255,0.25)] hover:shadow-[0_8px_30px_rgba(0,82,255,0.4)] transition-all duration-300 group cursor-pointer border border-white/10"
+          className="w-full font-sans font-bold py-4 px-6 rounded-xl flex items-center justify-center gap-2 text-white bg-[#0052FF] hover:bg-[#0052FF]/95 active:scale-[0.99] shadow-[0_4px_20px_rgba(0,82,255,0.25)] hover:shadow-[0_8px_30px_rgba(0,82,255,0.4)] transition-all duration-300 group cursor-pointer border border-[#0052FF]/10"
         >
           {t.start_btn}
           <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform text-white/90" />
         </button>
 
         {/* Form Footer Metrics */}
-        <div className="grid grid-cols-3 gap-2 mt-6 text-[9px] font-mono border-t border-white/10 pt-4 text-white/50 select-none">
+        <div className="grid grid-cols-3 gap-2 mt-6 text-[9px] font-mono border-t border-slate-100 pt-4 text-slate-400 select-none">
           <div className="flex items-center gap-1 justify-center sm:justify-start">
             <Cpu size={10} className="text-[#0052FF]" />
             <span>{t.est_confirmation}</span>
@@ -258,7 +258,7 @@ export default function Onboarding({ onStart, lang, theme = 'light', specialToke
             <Globe size={10} className="text-[#0052FF]" />
             <span>{t.base_fees}</span>
           </div>
-          <div className="flex items-center gap-1 justify-center sm:justify-end text-amber-400">
+          <div className="flex items-center gap-1 justify-center sm:justify-end text-amber-600">
             <Key size={10} className="animate-pulse" />
             <span>
               {lang === 'id' ? `KUNCI: ${specialTokens}` : `KEYS: ${specialTokens}`}
