@@ -822,12 +822,12 @@ export default function App() {
       </main>
 
       {/* FOOTER & LIVE BLOCK UPDATES TICKER */}
-      <footer className="bg-white dark:bg-[#0200FA] border-t border-[#0200FA]/10 dark:border-white/10 pt-16 pb-8 px-4 sm:px-6 md:px-8 font-sans relative overflow-hidden transition-colors duration-300">
+      <footer className="bg-[#0200FA] border-t border-white/10 pt-16 pb-8 px-4 sm:px-6 md:px-8 font-sans relative overflow-hidden transition-colors duration-300 text-white">
         
         {/* Top dynamic news broadcast ticker bar */}
-        <div className="max-w-6xl mx-auto mb-12 border border-[#0200FA]/15 dark:border-white/5 rounded-2xl px-4 py-2.5 bg-white/60 dark:bg-slate-900/30 backdrop-blur-md flex items-center justify-between gap-3 shadow-inner">
+        <div className="max-w-6xl mx-auto mb-12 border border-white/10 rounded-2xl px-4 py-2.5 bg-white/5 backdrop-blur-md flex items-center justify-between gap-3 shadow-inner">
           <div className="flex items-center gap-3 overflow-hidden flex-grow">
-            <span className="bg-[#0200FA]/10 text-[#0200FA] dark:bg-white/10 dark:text-white border border-[#0200FA]/20 dark:border-white/20 text-[9px] font-mono font-bold px-2.5 py-0.5 rounded flex-shrink-0 select-none">
+            <span className="bg-white/10 text-white border border-white/10 text-[9px] font-mono font-bold px-2.5 py-0.5 rounded flex-shrink-0 select-none">
               LIVE BROADCAST
             </span>
             
@@ -839,7 +839,7 @@ export default function App() {
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: -12, opacity: 0 }}
                   transition={{ duration: 0.4 }}
-                  className="text-xs font-mono text-[#0200FA]/80 dark:text-white/80 absolute inset-x-0 truncate text-left"
+                  className="text-xs font-mono text-white/80 absolute inset-x-0 truncate text-left"
                 >
                   {translations[lang].news_ticker[tickerIndex]}
                 </motion.p>
@@ -847,8 +847,8 @@ export default function App() {
             </div>
           </div>
           
-          <div className="hidden sm:flex items-center gap-1.5 text-[9px] font-mono text-[#0200FA]/50 dark:text-white/50 uppercase tracking-widest pl-3 border-l border-[#0200FA]/10 dark:border-white/10">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#0200FA] dark:bg-white animate-pulse" />
+          <div className="hidden sm:flex items-center gap-1.5 text-[9px] font-mono text-white/50 uppercase tracking-widest pl-3 border-l border-white/10">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             <span>B20 MAZE ENGINE ACTIVE</span>
           </div>
         </div>
@@ -859,22 +859,22 @@ export default function App() {
           {/* Main Section: Heading, Description, Credit */}
           <div className="max-w-xl flex flex-col items-start">
             {/* Big Heading */}
-            <h2 className="font-sans font-extrabold text-3xl md:text-4xl text-[#0200FA] dark:text-white tracking-tight leading-tight mt-6 mb-4">
+            <h2 className="font-sans font-extrabold text-3xl md:text-4xl text-white tracking-tight leading-tight mt-6 mb-4">
               Find Your Way to B20
             </h2>
 
             {/* Description */}
-            <p className="text-[#0200FA]/70 dark:text-white/70 text-sm md:text-base leading-relaxed mb-6">
+            <p className="text-white/70 text-sm md:text-base leading-relaxed mb-6">
               Explore the maze, overcome challenges, and discover the new B20 token standard on Base. Play, learn, and reach the launch portal.
             </p>
 
             {/* Copyright details */}
-            <div className="text-[#0200FA]/60 dark:text-white/60 text-xs font-sans mb-4">
+            <div className="text-white/55 text-xs font-sans mb-4">
               © 2026 sividelia6 - All rights reserved
             </div>
 
             {/* Credit lines built by sividelia_okuni */}
-            <div className="flex items-center gap-2.5 text-sm text-[#0200FA] dark:text-white">
+            <div className="flex items-center gap-2.5 text-sm text-white">
               <span>Built with</span>
               <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500 animate-pulse" />
               <span>by</span>
@@ -882,7 +882,7 @@ export default function App() {
                 href="https://x.com/sividelia6" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="font-semibold text-[#0200FA] dark:text-white hover:underline cursor-pointer"
+                className="font-semibold text-cyan-200 hover:text-white hover:underline cursor-pointer"
               >
                 sividelia_okuni
               </a>
@@ -892,7 +892,7 @@ export default function App() {
         </div>
 
         {/* Beautiful scrolling green hills container at the very bottom */}
-        <div className="max-w-6xl mx-auto relative w-full h-[280px] sm:h-[400px] md:h-[450px] overflow-hidden rounded-3xl mt-16 shadow-2xl border border-gray-150/80 dark:border-white/5 select-none">
+        <div className="max-w-6xl mx-auto relative w-full h-[280px] sm:h-[400px] md:h-[450px] overflow-hidden rounded-3xl mt-16 shadow-2xl border border-white/10 select-none">
           {/* Rolling green hills background image replaced with Base brand image */}
           <img 
             src="https://brand.base.org/_next/image?url=%2F_next%2Fstatic%2Fmedia%2F4.0p3kmo7.-wstk.jpg&w=1920&q=75" 
