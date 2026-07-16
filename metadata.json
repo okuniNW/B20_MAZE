@@ -1,0 +1,8 @@
+{
+  "name": "B20 MAZE GAME",
+  "description": "Permainan puzzle labirin interaktif bertema B20 MAZE GAME, Build By Sividelia_okuni6.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

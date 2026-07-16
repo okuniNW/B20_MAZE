@@ -1,0 +1,198 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Space Grotesk", sans-serif;
+  --font-sans: "Sora", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  
+  --color-cerulean-sky: #0052FF;
+  --color-deep-navy: #0052FF;
+  --color-warm-red: #0052FF;
+  --color-cloud-white: #FFFFFF;
+  --color-ink-dark: #0052FF;
+}
+
+/* Custom scrollbar for game elements using pure blue/white */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 82, 255, 0.05);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 82, 255, 0.2);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 82, 255, 0.5);
+}
+
+/* Cora-specific stylistic elements with premium overlays */
+.cora-canvas {
+  background-color: #0A0A0A;
+  background-image: 
+    linear-gradient(to bottom, rgba(10, 10, 10, 0.55), rgba(10, 10, 10, 0.9)), 
+    radial-gradient(circle at 50% 40%, rgba(0, 82, 255, 0.18) 0%, rgba(10, 10, 10, 0) 70%),
+    url("./assets/images/neoclassical_facade_1784182720447.jpg");
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+.cora-desk-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.4),
+              inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  color: #FFFFFF;
+}
+
+.cora-desk-card-active {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(0, 82, 255, 0.4);
+  box-shadow: 0 15px 45px -10px rgba(0, 82, 255, 0.25),
+              inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  color: #FFFFFF;
+}
+
+.cora-btn-primary {
+  background-color: #0052FF;
+  color: #FFFFFF;
+  border: 1px solid #0052FF;
+  box-shadow: 0 4px 14px rgba(0, 82, 255, 0.3);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cora-btn-primary:hover {
+  background-color: #FFFFFF;
+  color: #0052FF;
+  border-color: #FFFFFF;
+  transform: translateY(-1.5px);
+  box-shadow: 0 6px 20px rgba(0, 82, 255, 0.45);
+}
+
+.cora-btn-secondary {
+  background-color: transparent;
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cora-btn-secondary:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #FFFFFF;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.cora-stamp-accent {
+  color: #0052FF;
+  border-color: rgba(0, 82, 255, 0.2);
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(0, 82, 255, 0.4);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 10px rgba(0, 82, 255, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(0, 82, 255, 0);
+  }
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes scanner {
+  0%, 100% {
+    transform: translateY(-5%);
+  }
+  50% {
+    transform: translateY(105%);
+  }
+}
+
+.animate-scanner {
+  animation: scanner 3s ease-in-out infinite;
+}
+
+/* Dark Mode Overrides for strict #0052FF and #FFFFFF dual-tone */
+.dark .cora-canvas {
+  background-color: #0052FF;
+  background-image: linear-gradient(rgba(0, 82, 255, 0.85), rgba(0, 82, 255, 0.85)), url("./assets/images/neoclassical_facade_1784182720447.jpg");
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+.dark {
+  background-color: #0052FF;
+  color: #FFFFFF;
+}
+.dark .cora-desk-card {
+  background: #0052FF;
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.2),
+              inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  color: #FFFFFF;
+}
+.dark .cora-desk-card-active {
+  background: #0052FF;
+  border-color: #FFFFFF;
+}
+.dark .bg-white {
+  background-color: #0052FF !important;
+  color: #FFFFFF !important;
+}
+.dark .text-black {
+  color: #FFFFFF !important;
+}
+.dark .text-deep-navy {
+  color: #FFFFFF !important;
+}
+.dark .border-deep-navy\/5 {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+.dark .bg-deep-navy\/5 {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+.dark .hover\:bg-deep-navy\/10:hover {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+}
+.dark .text-deep-navy\/80 {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+.dark .text-deep-navy\/40 {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+.dark .text-deep-navy\/50 {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+.dark .text-deep-navy\/60 {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+.dark .text-[#061d33] {
+  color: #FFFFFF !important;
+}
+.dark .border-deep-navy\/10 {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+.dark .border-deep-navy\/20 {
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+.dark .bg-cloud-white {
+  background-color: #0052FF !important;
+}
+.dark .bg-cloud-white\/40 {
+  background-color: rgba(0, 82, 255, 0.4) !important;
+}

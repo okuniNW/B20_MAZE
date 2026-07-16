@@ -1,0 +1,6 @@
+Silakan upload file musik MP3 Anda ke folder ini, lalu beri nama salah satu dari berikut ini:
+- music.mp3
+- tots_theme.mp3
+- tots.mp3
+
+Setelah di-upload, tombol musik di web akan memainkan lagu MP3 tersebut secara otomatis!
