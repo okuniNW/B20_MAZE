@@ -1,4 +1,6 @@
 export type Difficulty = 'standard' | 'batch' | 'superchain';
+export type L2Theme = 'base-blue' | 'optimism-amber' | 'degen-green' | 'blob-pink';
+
 
 export interface Cell {
   x: number;

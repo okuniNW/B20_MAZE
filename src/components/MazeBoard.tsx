@@ -6,8 +6,10 @@ import {
   PlayerPosition,
   GameStats,
   ScoreEntry,
-  BADGES
+  BADGES,
+  L2Theme
 } from '../types';
+import { L2_THEMES } from '../lib/themes';
 import {
   sound
 } from './SoundEngine';
@@ -55,6 +57,8 @@ interface MazeBoardProps {
   theme?: 'light' | 'dark';
   specialTokens: number;
   setSpecialTokens: React.Dispatch<React.SetStateAction<number>>;
+  l2Theme?: L2Theme;
+  onQuestProgress?: (questId: string, amount?: number) => void;
 }
 
 export default function MazeBoard({
@@ -68,7 +72,9 @@ export default function MazeBoard({
   lang,
   theme = 'dark',
   specialTokens,
-  setSpecialTokens
+  setSpecialTokens,
+  l2Theme = 'base-blue',
+  onQuestProgress
 }: MazeBoardProps) {
   // Determine grid size based on difficulty
   const getGridConfig = (diff: Difficulty, isCamp?: boolean, campLvl?: number) => {
@@ -192,14 +198,47 @@ export default function MazeBoard({
           console.error("Error parsing saved campaign state:", e);
         }
       }
+    } else if (!isCampaign && !forceFresh) {
+      const savedStateStr = localStorage.getItem('base_maze_classic_resume_state');
+      if (savedStateStr) {
+        try {
+          const savedState = JSON.parse(savedStateStr);
+          if (savedState && savedState.difficulty === difficulty && savedState.grid && savedState.player && savedState.stats) {
+            setGrid(savedState.grid);
+            setPlayer(savedState.player);
+            setStats(savedState.stats);
+            if (savedState.specialTokens !== undefined) {
+              setSpecialTokens(savedState.specialTokens);
+            }
+            if (savedState.hasUsedBypass !== undefined) setHasUsedBypass(savedState.hasUsedBypass);
+            if (savedState.hasEnabledHints !== undefined) setHasEnabledHints(savedState.hasEnabledHints);
+            if (savedState.showHint !== undefined) setShowHint(savedState.showHint);
+            if (savedState.hintUnlocked !== undefined) setHintUnlocked(savedState.hintUnlocked);
+            
+            setIsReady(true);
+            calculateShortestPath(savedState.grid, savedState.player.x, savedState.player.y);
+            
+            setToastMessage(lang === 'id' 
+              ? `📦 Melanjutkan sesi ${difficulty} dari progres sebelumnya!` 
+              : `📦 Resumed ${difficulty} session from your previous progress!`
+            );
+            return; // Successfully loaded the save state
+          }
+        } catch (e) {
+          console.error("Error parsing saved classic state:", e);
+        }
+      }
     }
 
     setPlayer({ x: 0, y: 0 });
+    const initialValidatorTokens = isCampaign
+      ? Number(localStorage.getItem('base_maze_campaign_bypass_keys') || '0')
+      : 0;
     setStats({
       timeElapsed: 0,
       gasCost: 0.0095,
       transactionsMade: 0,
-      validatorTokens: 0,
+      validatorTokens: initialValidatorTokens,
       isNoclipped: false
     });
 
@@ -273,12 +312,10 @@ export default function MazeBoard({
       }
     }
 
-    // 3. Inject Collectibles (with safety attempts limits to prevent infinite freeze loops)
+    // 3. Inject Collectibles
     // Gas Nodes (Gwei savers)
     let gasPlaced = 0;
-    let gasAttempts = 0;
-    while (gasPlaced < config.gasCount && gasAttempts < 300) {
-      gasAttempts++;
+    while (gasPlaced < config.gasCount) {
       const rx = Math.floor(Math.random() * cols);
       const ry = Math.floor(Math.random() * rows);
       // Don't place on start, exit, or existing items
@@ -294,23 +331,72 @@ export default function MazeBoard({
       gasPlaced++;
     }
 
-    // Validator Nodes (power-ups)
+    // Validator Nodes (power-ups / bypass keys)
     let valPlaced = 0;
-    let valAttempts = 0;
-    while (valPlaced < config.valCount && valAttempts < 300) {
-      valAttempts++;
-      const rx = Math.floor(Math.random() * cols);
-      const ry = Math.floor(Math.random() * rows);
-      if (
-        (rx === 0 && ry === 0) ||
-        (rx === cols - 1 && ry === rows - 1) ||
-        initialGrid[ry][rx].isGasNode ||
-        initialGrid[ry][rx].isValidatorNode
-      ) {
-        continue;
+    if (isCampaign) {
+      // Scale spawn rate from 10% (0.10) at Level 1 down to 5% (0.05) at Level 50
+      const validatorSpawnRate = Math.max(0.05, 0.10 - ((campaignLevel - 1) / 49) * 0.05);
+      const maxVal = Math.max(1, Math.min(5, Math.floor((cols * rows) * validatorSpawnRate))); // Max capped proportionally
+      
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          if (valPlaced >= maxVal) break;
+          const cell = initialGrid[y][x];
+          // Don't place on start, exit, or existing items
+          if (
+            (x === 0 && y === 0) ||
+            (x === cols - 1 && y === rows - 1) ||
+            cell.isGasNode ||
+            cell.isValidatorNode
+          ) {
+            continue;
+          }
+          if (Math.random() < validatorSpawnRate) {
+            cell.isValidatorNode = true;
+            valPlaced++;
+          }
+        }
       }
-      initialGrid[ry][rx].isValidatorNode = true;
-      valPlaced++;
+
+      // 100% Guarantee: If none was placed, force-place at least one at a random valid spot
+      if (valPlaced === 0) {
+        let placedForce = false;
+        let attempts = 0;
+        while (!placedForce && attempts < 100) {
+          attempts++;
+          const rx = Math.floor(Math.random() * cols);
+          const ry = Math.floor(Math.random() * rows);
+          const cell = initialGrid[ry][rx];
+          if (
+            (rx === 0 && ry === 0) ||
+            (rx === cols - 1 && ry === rows - 1) ||
+            cell.isGasNode ||
+            cell.isValidatorNode
+          ) {
+            continue;
+          }
+          cell.isValidatorNode = true;
+          valPlaced++;
+          placedForce = true;
+        }
+      }
+    } else {
+      // Classic mode uses standard valCount setup
+      while (valPlaced < config.valCount) {
+        const rx = Math.floor(Math.random() * cols);
+        const ry = Math.floor(Math.random() * rows);
+        const cell = initialGrid[ry][rx];
+        if (
+          (rx === 0 && ry === 0) ||
+          (rx === cols - 1 && ry === rows - 1) ||
+          cell.isGasNode ||
+          cell.isValidatorNode
+        ) {
+          continue;
+        }
+        cell.isValidatorNode = true;
+        valPlaced++;
+      }
     }
 
     // Portals (Bridges L1 <-> L2)
@@ -318,10 +404,8 @@ export default function MazeBoard({
       // Create a pair of portals
       let portalA: { x: number; y: number } | null = null;
       let portalB: { x: number; y: number } | null = null;
-      let portalAttempts = 0;
 
-      while (!portalA && portalAttempts < 200) {
-        portalAttempts++;
+      while (!portalA) {
         const rx = Math.floor(Math.random() * (cols / 2));
         const ry = Math.floor(Math.random() * (rows / 2));
         if ((rx !== 0 || ry !== 0) && !initialGrid[ry][rx].isGasNode && !initialGrid[ry][rx].isValidatorNode) {
@@ -329,9 +413,7 @@ export default function MazeBoard({
         }
       }
 
-      portalAttempts = 0;
-      while (!portalB && portalAttempts < 200) {
-        portalAttempts++;
+      while (!portalB) {
         const rx = Math.floor(cols / 2 + Math.random() * (cols / 2));
         const ry = Math.floor(rows / 2 + Math.random() * (rows / 2));
         if ((rx !== cols - 1 || ry !== rows - 1) && !initialGrid[ry][rx].isGasNode && !initialGrid[ry][rx].isValidatorNode) {
@@ -339,41 +421,43 @@ export default function MazeBoard({
         }
       }
 
-      if (portalA && portalB) {
-        initialGrid[portalA.y][portalA.x].isPortal = true;
-        initialGrid[portalA.y][portalA.x].portalTarget = portalB;
+      initialGrid[portalA.y][portalA.x].isPortal = true;
+      initialGrid[portalA.y][portalA.x].portalTarget = portalB;
 
-        initialGrid[portalB.y][portalB.x].isPortal = true;
-        initialGrid[portalB.y][portalB.x].portalTarget = portalA;
-      }
+      initialGrid[portalB.y][portalB.x].isPortal = true;
+      initialGrid[portalB.y][portalB.x].portalTarget = portalA;
     }
 
-    // 4. Inject Special Tokens (Rarer spawn rate: 70% chance of level containing keys, max 1 on small, max 2 on large)
-    // Uses a guaranteed while loop placement for robust and reliable key item dropping.
+    // 4. Inject Special Tokens
+    // Scale level presence chance from 100% (1.00) at Level 1 down to 5% (0.05) at Level 50
+    const specialTokenLevelProb = isCampaign ? Math.max(0.05, 1.00 - ((campaignLevel - 1) / 49) * 0.95) : 0.45;
+    // Scale cell density chance from 10% (0.10) at Level 1 down to 5% (0.05) at Level 50
+    const specialTokenCellRate = isCampaign ? Math.max(0.05, 0.10 - ((campaignLevel - 1) / 49) * 0.05) : 0.02;
+
     let keysPlaced = 0;
     const maxKeys = cols <= 10 ? 1 : 2;
-    const hasKeysThisLevel = Math.random() < 0.70;
+    const hasKeysThisLevel = Math.random() < specialTokenLevelProb;
 
     if (hasKeysThisLevel) {
-      let keyAttempts = 0;
-      while (keysPlaced < maxKeys && keyAttempts < 300) {
-        keyAttempts++;
-        const rx = Math.floor(Math.random() * cols);
-        const ry = Math.floor(Math.random() * rows);
-        const cell = initialGrid[ry][rx];
-        // Don't place on start, exit, portals, gas nodes, or validator nodes
-        if (
-          (rx === 0 && ry === 0) ||
-          (rx === cols - 1 && ry === rows - 1) ||
-          cell.isGasNode ||
-          cell.isValidatorNode ||
-          cell.isPortal ||
-          cell.isSpecialToken
-        ) {
-          continue;
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          if (keysPlaced >= maxKeys) break;
+          const cell = initialGrid[y][x];
+          // Don't place on start, exit, portals, gas nodes, or validator nodes
+          if (
+            (x === 0 && y === 0) ||
+            (x === cols - 1 && y === rows - 1) ||
+            cell.isGasNode ||
+            cell.isValidatorNode ||
+            cell.isPortal
+          ) {
+            continue;
+          }
+          if (Math.random() < specialTokenCellRate) {
+            cell.isSpecialToken = true;
+            keysPlaced++;
+          }
         }
-        cell.isSpecialToken = true;
-        keysPlaced++;
       }
     }
 
@@ -444,21 +528,36 @@ export default function MazeBoard({
     };
   }, [difficulty, isCampaign, campaignLevel]);
 
-  // Save campaign state on any gameplay update
+  // Save state on any gameplay update
   useEffect(() => {
-    if (isCampaign && isReady && !hasWon && !autoSolving && grid.length > 0) {
-      const stateToSave = {
-        campaignLevel,
-        player,
-        grid,
-        stats,
-        specialTokens,
-        hasUsedBypass,
-        hasEnabledHints,
-        showHint,
-        hintUnlocked
-      };
-      localStorage.setItem('base_maze_campaign_resume_state', JSON.stringify(stateToSave));
+    if (isReady && !hasWon && !autoSolving && grid.length > 0) {
+      if (isCampaign) {
+        const stateToSave = {
+          campaignLevel,
+          player,
+          grid,
+          stats,
+          specialTokens,
+          hasUsedBypass,
+          hasEnabledHints,
+          showHint,
+          hintUnlocked
+        };
+        localStorage.setItem('base_maze_campaign_resume_state', JSON.stringify(stateToSave));
+      } else {
+        const stateToSave = {
+          difficulty,
+          player,
+          grid,
+          stats,
+          specialTokens,
+          hasUsedBypass,
+          hasEnabledHints,
+          showHint,
+          hintUnlocked
+        };
+        localStorage.setItem('base_maze_classic_resume_state', JSON.stringify(stateToSave));
+      }
     }
   }, [
     isCampaign,
@@ -466,6 +565,7 @@ export default function MazeBoard({
     hasWon,
     autoSolving,
     campaignLevel,
+    difficulty,
     player,
     grid,
     stats,
@@ -513,7 +613,7 @@ export default function MazeBoard({
     else if (dy === 1 && !currentCell.walls.bottom) canMove = true;
     else if (dx === -1 && !currentCell.walls.left) canMove = true;
 
-    // 2. Validator Booster: break firewall on contact ONLY if pre-activated by pressing "Gunakan Bypass" (isNoclipped is true)
+    // 2. Passive Validator Booster: automatically break firewall on contact ONLY if noclipped is pre-activated by the user pressing the bypass button
     if (!canMove && stats.isNoclipped) {
       const targetX = player.x + dx;
       const targetY = player.y + dy;
@@ -540,6 +640,9 @@ export default function MazeBoard({
         setGrid(newGrid);
         sound.playPowerup();
         setHasUsedBypass(true);
+        if (onQuestProgress) {
+          onQuestProgress('wall_breaker', 1);
+        }
       }
     }
 
@@ -591,8 +694,6 @@ export default function MazeBoard({
         if (autoUsedNoclip) {
           if (nextIsNoclipped) {
             nextIsNoclipped = false;
-          } else if (nextValidatorTokens > 0) {
-            nextValidatorTokens -= 1;
           }
         }
 
@@ -622,8 +723,15 @@ export default function MazeBoard({
     setHasWon(true);
     if (timerRef.current) clearInterval(timerRef.current);
 
+    if (onQuestProgress) {
+      onQuestProgress('speedrun', 1);
+    }
+
     if (isCampaign) {
       localStorage.removeItem('base_maze_campaign_resume_state');
+      localStorage.setItem('base_maze_campaign_bypass_keys', String(stats.validatorTokens));
+    } else {
+      localStorage.removeItem('base_maze_classic_resume_state');
     }
 
     // Generate celebratory particles using motion/react
@@ -811,6 +919,9 @@ export default function MazeBoard({
         setShowHint(true);
         sound.playPowerup();
         setHasEnabledHints(true);
+        if (onQuestProgress) {
+          onQuestProgress('optimistic', 1);
+        }
       } else {
         sound.playError();
         setToastMessage(translations[lang].mazeboard.insufficient_tokens);
@@ -837,9 +948,10 @@ export default function MazeBoard({
       generateMaze(true); // Force fresh generation
     } else {
       if (specialTokens >= 1) {
+        localStorage.removeItem('base_maze_classic_resume_state');
         setSpecialTokens(prev => prev - 1);
         setHintUnlocked(false);
-        generateMaze();
+        generateMaze(true); // Force fresh generation
       } else {
         sound.playError();
         setToastMessage(translations[lang].mazeboard.insufficient_tokens);
@@ -850,18 +962,19 @@ export default function MazeBoard({
   // Helper styles for cell walls
   const getCellClassName = (cell: Cell) => {
     let classes = "relative aspect-square transition-all duration-150 border-cloud-white/20 ";
+    const activeTheme = L2_THEMES[l2Theme] || L2_THEMES['base-blue'];
 
-    // Crisp solid Deep Navy walls for maximum structural clarity, and golden hints for paths
-    if (cell.walls.top) classes += "border-t-[3px] border-t-deep-navy ";
+    // Crisp solid L2-themed walls for maximum structural clarity
+    if (cell.walls.top) classes += `border-t-[3px] ${activeTheme.wallBorderTop} `;
     else classes += "border-t border-t-cerulean-sky/10 ";
 
-    if (cell.walls.right) classes += "border-r-[3px] border-r-deep-navy ";
+    if (cell.walls.right) classes += `border-r-[3px] ${activeTheme.wallBorderRight} `;
     else classes += "border-r border-r-cerulean-sky/10 ";
 
-    if (cell.walls.bottom) classes += "border-b-[3px] border-b-deep-navy ";
+    if (cell.walls.bottom) classes += `border-b-[3px] ${activeTheme.wallBorderBottom} `;
     else classes += "border-b border-b-cerulean-sky/10 ";
 
-    if (cell.walls.left) classes += "border-l-[3px] border-l-deep-navy ";
+    if (cell.walls.left) classes += `border-l-[3px] ${activeTheme.wallBorderLeft} `;
     else classes += "border-l border-l-cerulean-sky/10 ";
 
     return classes;
@@ -971,6 +1084,7 @@ export default function MazeBoard({
                   const isStart = x === 0 && y === 0;
                   const isExit = x === cols - 1 && y === rows - 1;
                   const isPlayer = player.x === x && player.y === y;
+                  const activeTheme = L2_THEMES[l2Theme] || L2_THEMES['base-blue'];
 
                   // Is this cell on the optimized hint path?
                   const isOnHint = showHint && shortestPath.some(([px, py]) => px === x && py === y);
@@ -1042,12 +1156,19 @@ export default function MazeBoard({
                       {isPlayer && (
                         <motion.div
                           layoutId="player-token"
-                          className="absolute inset-1 bg-deep-navy rounded-full border border-white flex items-center justify-center shadow-lg shadow-deep-navy/40 z-20"
+                          className="absolute inset-1 rounded-full border border-white flex items-center justify-center shadow-lg z-20 transition-colors duration-300"
+                          style={{
+                            backgroundColor: activeTheme.accentColor,
+                            boxShadow: `0 10px 15px -3px ${activeTheme.accentColor}44, 0 4px 6px -4px ${activeTheme.accentColor}44`
+                          }}
                         >
                           {/* Inner white circle */}
                           <div className="w-[60%] h-[60%] bg-white rounded-full flex items-center justify-center">
                             {/* Inner deep navy dot */}
-                            <div className="w-[45%] h-[45%] bg-deep-navy rounded-full animate-pulse"></div>
+                            <div
+                              className="w-[45%] h-[45%] rounded-full animate-pulse transition-colors duration-300"
+                              style={{ backgroundColor: activeTheme.accentColor }}
+                            ></div>
                           </div>
                         </motion.div>
                       )}

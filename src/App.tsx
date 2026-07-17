@@ -26,7 +26,7 @@ import {
   Heart,
   Sparkles
 } from 'lucide-react';
-import { Difficulty, ScoreEntry } from './types';
+import { Difficulty, ScoreEntry, L2Theme } from './types';
 import Onboarding from './components/Onboarding';
 import MazeBoard from './components/MazeBoard';
 import Leaderboard from './components/Leaderboard';
@@ -34,6 +34,8 @@ import { sound } from './components/SoundEngine';
 import { Language, translations } from './lib/i18n';
 import ClipboardPanel from './components/ClipboardPanel';
 import FooterModals from './components/FooterModals';
+import BaseHub from './components/BaseHub';
+import { L2_THEMES } from './lib/themes';
 // @ts-ignore
 import soltWagnerImage from './assets/images/solt_wagner_1784096460966.jpg';
 // @ts-ignore
@@ -71,9 +73,89 @@ export default function App() {
   const [isBetaActive, setIsBetaActive] = useState(false);
   const [votedFeatures, setVotedFeatures] = useState<string[]>([]);
 
+  const [l2Theme, setL2Theme] = useState<L2Theme>(() => {
+    return (localStorage.getItem('base_maze_l2_theme') as L2Theme) || 'base-blue';
+  });
+
+  const [lastClaimTime, setLastClaimTime] = useState<number>(() => {
+    return Number(localStorage.getItem('base_maze_last_claim_time') || '0');
+  });
+
+  const [faucetClaimStatus, setFaucetClaimStatus] = useState<'idle' | 'initiating' | 'broadcasting' | 'confirmed'>('idle');
+  const [faucetTxHash, setFaucetTxHash] = useState<string>('');
+
+  const [quests, setQuests] = useState<{ id: string; nameEn: string; nameId: string; target: number; current: number; completed: boolean; rewardClaimed: boolean }[]>(() => {
+    const saved = localStorage.getItem('base_maze_quests_v1');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {}
+    }
+    return [
+      {
+        id: 'speedrun',
+        nameEn: '⚡ Fast Block Validation: Clear a level in < 15s',
+        nameId: '⚡ Validasi Cepat: Selesaikan level dalam < 15 detik',
+        target: 1,
+        current: 0,
+        completed: false,
+        rewardClaimed: false
+      },
+      {
+        id: 'optimistic',
+        nameEn: '🎯 Optimistic Validator: Complete a level using gas routing hints',
+        nameId: '🎯 Validator Optimis: Selesaikan level menggunakan rute petunjuk gas',
+        target: 1,
+        current: 0,
+        completed: false,
+        rewardClaimed: false
+      },
+      {
+        id: 'wall_breaker',
+        nameEn: '🧱 Firewall Breaker: Shatter a firewall wall using a Bypass Key',
+        nameId: '🧱 Penghancur Firewall: Hancurkan dinding dengan Bypass Key',
+        target: 1,
+        current: 0,
+        completed: false,
+        rewardClaimed: false
+      }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('base_maze_quests_v1', JSON.stringify(quests));
+  }, [quests]);
+
+  useEffect(() => {
+    localStorage.setItem('base_maze_last_claim_time', String(lastClaimTime));
+  }, [lastClaimTime]);
+
+  useEffect(() => {
+    localStorage.setItem('base_maze_l2_theme', l2Theme);
+  }, [l2Theme]);
+
   useEffect(() => {
     localStorage.setItem('base_maze_special_tokens', String(specialTokens));
   }, [specialTokens]);
+
+  const handleQuestProgress = (questId: string, amount: number = 1) => {
+    setQuests(prev => prev.map(q => {
+      if (q.id === questId && !q.completed) {
+        const nextCurrent = Math.min(q.target, q.current + amount);
+        const nextCompleted = nextCurrent >= q.target;
+        if (nextCompleted) {
+          sound.playPowerup();
+          setSpecialTokens(t => t + 1);
+        }
+        return {
+          ...q,
+          current: nextCurrent,
+          completed: nextCompleted
+        };
+      }
+      return q;
+    }));
+  };
 
   useEffect(() => {
     document.documentElement.classList.remove('dark');
@@ -136,7 +218,12 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col font-sans transition-colors duration-300 selection:bg-cerulean-sky/20 text-deep-navy cora-canvas">
+    <div 
+      className="min-h-screen flex flex-col font-sans transition-colors duration-300 selection:bg-cerulean-sky/20 text-deep-navy cora-canvas"
+      style={{
+        backgroundImage: `linear-gradient(to bottom, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.96)), ${L2_THEMES[l2Theme].bgGradient}, url(${hillsBgImage})`
+      }}
+    >
       
       {/* FLOATING HEADER PILL (COOLDOCK / IMAGE 2 STYLE) - Frosted Dark Glassmorphism */}
       <div className="sticky top-0 z-50 w-full px-4 pt-4 pb-2">
@@ -773,6 +860,22 @@ export default function App() {
                   )}
                 </div>
               </div>
+
+              {/* BASE BUILDER HUB (FAUCET, QUESTS, PROFILE STYLES) */}
+              <BaseHub
+                lang={lang}
+                specialTokens={specialTokens}
+                setSpecialTokens={setSpecialTokens}
+                l2Theme={l2Theme}
+                setL2Theme={setL2Theme}
+                quests={quests}
+                lastClaimTime={lastClaimTime}
+                setLastClaimTime={setLastClaimTime}
+                faucetClaimStatus={faucetClaimStatus}
+                setFaucetClaimStatus={setFaucetClaimStatus}
+                faucetTxHash={faucetTxHash}
+                setFaucetTxHash={setFaucetTxHash}
+              />
             </motion.div>
           )}
 
@@ -796,6 +899,8 @@ export default function App() {
                 theme="light"
                 specialTokens={specialTokens}
                 setSpecialTokens={setSpecialTokens}
+                l2Theme={l2Theme}
+                onQuestProgress={handleQuestProgress}
               />
             </motion.div>
           )}
