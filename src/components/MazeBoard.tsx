@@ -334,8 +334,8 @@ export default function MazeBoard({
     // Validator Nodes (power-ups / bypass keys)
     let valPlaced = 0;
     if (isCampaign) {
-      // Scale spawn rate from 10% (0.10) at Level 1 down to 5% (0.05) at Level 50
-      const validatorSpawnRate = Math.max(0.05, 0.10 - ((campaignLevel - 1) / 49) * 0.05);
+      // Scale spawn rate from 10% (0.10) at Level 1 down to 0.001% (0.00001) at Level 50
+      const validatorSpawnRate = Math.max(0.00001, 0.10 - ((campaignLevel - 1) / 49) * 0.09999);
       const maxVal = Math.max(1, Math.min(5, Math.floor((cols * rows) * validatorSpawnRate))); // Max capped proportionally
       
       for (let y = 0; y < rows; y++) {
@@ -429,10 +429,10 @@ export default function MazeBoard({
     }
 
     // 4. Inject Special Tokens
-    // Scale level presence chance from 100% (1.00) at Level 1 down to 5% (0.05) at Level 50
-    const specialTokenLevelProb = isCampaign ? Math.max(0.05, 1.00 - ((campaignLevel - 1) / 49) * 0.95) : 0.45;
-    // Scale cell density chance from 10% (0.10) at Level 1 down to 5% (0.05) at Level 50
-    const specialTokenCellRate = isCampaign ? Math.max(0.05, 0.10 - ((campaignLevel - 1) / 49) * 0.05) : 0.02;
+    // Scale level presence chance from 10% (0.10) at Level 1 down to 0.001% (0.00001) at Level 50
+    const specialTokenLevelProb = isCampaign ? Math.max(0.00001, 0.10 - ((campaignLevel - 1) / 49) * 0.09999) : 0.45;
+    // Scale cell density chance from 10% (0.10) at Level 1 down to 0.001% (0.00001) at Level 50
+    const specialTokenCellRate = isCampaign ? Math.max(0.00001, 0.10 - ((campaignLevel - 1) / 49) * 0.09999) : 0.02;
 
     let keysPlaced = 0;
     const maxKeys = cols <= 10 ? 1 : 2;
