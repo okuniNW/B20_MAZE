@@ -132,8 +132,11 @@ export default function MazeBoard({
   const [blockHeight, setBlockHeight] = useState(18442000);
   const [autoSolving, setAutoSolving] = useState(false);
 
-   const [hintUnlocked, setHintUnlocked] = useState<boolean>(false);
+  const [hintUnlocked, setHintUnlocked] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [tokensCollectedThisRun, setTokensCollectedThisRun] = useState(false);
+  const [hadPenaltyThisRun, setHadPenaltyThisRun] = useState(false);
+  const [screenShake, setScreenShake] = useState(false);
 
   useEffect(() => {
     if (toastMessage) {
@@ -254,6 +257,9 @@ export default function MazeBoard({
     setHasEnabledHints(false);
     setEarnedBadges([]);
     setParticles([]);
+    setTokensCollectedThisRun(false);
+    setHadPenaltyThisRun(false);
+    setScreenShake(false);
 
     // Check if there's a saved state to resume from
     if (isCampaign && !forceFresh) {
@@ -760,6 +766,7 @@ export default function MazeBoard({
         collectedGas = 1;
         sound.playCoin();
         triggerFeedback('+5 Gas', 'gas');
+        setTokensCollectedThisRun(true);
       }
 
       if (nextCell.isValidatorNode) {
@@ -767,6 +774,7 @@ export default function MazeBoard({
         collectedVal = 1;
         sound.playPowerup();
         triggerFeedback('+1 Validator', 'validator');
+        setTokensCollectedThisRun(true);
       }
 
       if (nextCell.isSpecialToken) {
@@ -776,6 +784,7 @@ export default function MazeBoard({
         triggerFeedback('+1 Key', 'key');
         const curKeys = Number(localStorage.getItem('base_maze_profile_keys_collected') || '0');
         localStorage.setItem('base_maze_profile_keys_collected', String(curKeys + 1));
+        setTokensCollectedThisRun(true);
       }
 
       // Check Portal Teleportation
@@ -830,9 +839,24 @@ export default function MazeBoard({
       onQuestProgress('speedrun', 1);
     }
 
+    let finalValidatorTokens = stats.validatorTokens;
+    if (!tokensCollectedThisRun) {
+      finalValidatorTokens = Math.max(0, stats.validatorTokens - 1);
+      setHadPenaltyThisRun(true);
+      setScreenShake(true);
+      setTimeout(() => setScreenShake(false), 600);
+      setStats(prev => ({ ...prev, validatorTokens: Math.max(0, prev.validatorTokens - 1) }));
+      setSpecialTokens(prev => Math.max(0, prev - 1));
+      sound.playError();
+      setTimeout(() => {
+        sound.playError();
+      }, 180);
+      triggerFeedback('-1 Bypass, -1 Key!', 'penalty');
+    }
+
     if (isCampaign) {
       localStorage.removeItem('base_maze_campaign_resume_state');
-      localStorage.setItem('base_maze_campaign_bypass_keys', String(stats.validatorTokens));
+      localStorage.setItem('base_maze_campaign_bypass_keys', String(finalValidatorTokens));
     } else {
       localStorage.removeItem('base_maze_classic_resume_state');
     }
@@ -1025,10 +1049,12 @@ export default function MazeBoard({
           if (newGrid[y][x].isGasNode) {
             newGrid[y][x].isGasNode = false;
             sound.playCoin();
+            setTokensCollectedThisRun(true);
           }
           if (newGrid[y][x].isValidatorNode) {
             newGrid[y][x].isValidatorNode = false;
             sound.playPowerup();
+            setTokensCollectedThisRun(true);
           }
           if (newGrid[y][x].isSpecialToken) {
             newGrid[y][x].isSpecialToken = false;
@@ -1036,6 +1062,7 @@ export default function MazeBoard({
             setSpecialTokens(prev => prev + 1);
             const curKeys = Number(localStorage.getItem('base_maze_profile_keys_collected') || '0');
             localStorage.setItem('base_maze_profile_keys_collected', String(curKeys + 1));
+            setTokensCollectedThisRun(true);
           }
           return newGrid;
         });
@@ -1206,7 +1233,14 @@ export default function MazeBoard({
         </AnimatePresence>
 
         {/* The Actual Maze Grid */}
-        <div className="relative w-full max-w-xl aspect-square rounded-2xl p-2 md:p-3 overflow-hidden transition-all duration-300 border border-deep-navy/15 bg-white/90 shadow-xl shadow-cerulean-sky/5">
+        <motion.div
+          animate={screenShake ? {
+            x: [0, -12, 12, -12, 12, -8, 8, -4, 4, 0],
+            y: [0, 6, -6, 6, -6, 4, -4, 2, -2, 0]
+          } : {}}
+          transition={{ duration: 0.5, ease: "easeInOut" }}
+          className="relative w-full max-w-xl aspect-square rounded-2xl p-2 md:p-3 overflow-hidden transition-all duration-300 border border-deep-navy/15 bg-white/90 shadow-xl shadow-cerulean-sky/5"
+        >
           {grid.length === 0 ? (
             <div className="w-full h-full flex items-center justify-center font-mono text-deep-navy/40">
               {translations[lang].mazeboard.generating_grid}
@@ -1331,7 +1365,7 @@ export default function MazeBoard({
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                className="absolute inset-0 backdrop-blur-md flex flex-col items-center justify-center z-30 transition-colors duration-300 bg-cloud-white/95 border-2 border-warm-red/20 rounded-2xl shadow-2xl"
+                className="absolute inset-0 backdrop-blur-md flex flex-col items-center justify-start overflow-y-auto z-30 transition-colors duration-300 bg-cloud-white/95 border-2 border-warm-red/20 rounded-2xl shadow-2xl py-6 px-4 select-none"
               >
                 {/* Celebration Particle Explosion */}
                 {particles.length > 0 && (
@@ -1369,42 +1403,62 @@ export default function MazeBoard({
                   </div>
                 )}
 
-                <div className="w-16 h-16 rounded-full border-2 flex items-center justify-center mb-4 shadow-lg bg-emerald-50 border-emerald-500 text-emerald-600">
-                  <CheckCircle size={36} className="animate-bounce" />
+                <div className="w-12 h-12 md:w-16 md:h-16 rounded-full border-2 flex items-center justify-center mb-2 md:mb-4 shadow-lg bg-emerald-50 border-emerald-500 text-emerald-600 shrink-0">
+                  <CheckCircle size={30} className="animate-bounce" />
                 </div>
-                <h2 className="text-2xl font-serif font-bold text-deep-navy">
+                <h2 className="text-xl md:text-2xl font-serif font-bold text-deep-navy text-center px-4">
                   {translations[lang].mazeboard.confirmed_title}
                 </h2>
-                <p className="text-xs font-mono mt-1 uppercase text-deep-navy/60">
+                <p className="text-[10px] md:text-xs font-mono mt-1 uppercase text-deep-navy/60 text-center px-4">
                   {translations[lang].mazeboard.confirmed_subtitle}
                 </p>
 
-                <div className="mt-4 flex gap-6 p-4 rounded-xl text-center font-mono border shadow-inner bg-cloud-white border-deep-navy/10">
+                <div className="mt-3 md:mt-4 flex gap-3 md:gap-6 p-3 md:p-4 rounded-xl text-center font-mono border shadow-inner bg-cloud-white border-deep-navy/10 w-full max-w-sm justify-around shrink-0">
                   <div>
-                    <span className="block text-[10px] text-deep-navy/50 uppercase">{translations[lang].mazeboard.time_short}</span>
-                    <span className="text-sm font-bold text-deep-navy">{stats.timeElapsed.toFixed(2)}s</span>
+                    <span className="block text-[9px] md:text-[10px] text-deep-navy/50 uppercase">{translations[lang].mazeboard.time_short}</span>
+                    <span className="text-xs md:text-sm font-bold text-deep-navy">{stats.timeElapsed.toFixed(2)}s</span>
                   </div>
                   <div className="border-r border-deep-navy/10"></div>
                   <div>
-                    <span className="block text-[10px] text-deep-navy/50 uppercase">{translations[lang].mazeboard.throughput_short}</span>
-                    <span className="text-sm font-bold text-cerulean-sky">
+                    <span className="block text-[9px] md:text-[10px] text-deep-navy/50 uppercase">{translations[lang].mazeboard.throughput_short}</span>
+                    <span className="text-xs md:text-sm font-bold text-cerulean-sky">
                       {((cols * rows * 120) / Math.max(0.5, stats.timeElapsed)).toLocaleString(undefined, { maximumFractionDigits: 1 })} TPS
                     </span>
                   </div>
                   <div className="border-r border-deep-navy/10"></div>
                   <div>
-                    <span className="block text-[10px] text-deep-navy/50 uppercase">Gas Gwei</span>
-                    <span className="text-sm font-bold text-warm-red">
+                    <span className="block text-[9px] md:text-[10px] text-deep-navy/50 uppercase">Gas Gwei</span>
+                    <span className="text-xs md:text-sm font-bold text-warm-red">
                       {Math.max(1, Math.round(stats.gasCost * 1000))}
                     </span>
                   </div>
                 </div>
 
+                {hadPenaltyThisRun && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-3 md:mt-4 px-4 py-2 border rounded-xl flex items-center gap-2.5 bg-warm-red/10 border-warm-red/30 text-warm-red font-mono text-[10px] md:text-[11px] text-left w-full max-w-sm shrink-0"
+                  >
+                    <span className="text-sm md:text-base">⚠️</span>
+                    <div>
+                      <p className="font-bold uppercase tracking-wide">
+                        {lang === 'id' ? 'PENALTI RESOURCE!' : 'RESOURCE PENALTY!'}
+                      </p>
+                      <p className="text-[9px] md:text-[10px] opacity-80 mt-0.5 leading-normal">
+                        {lang === 'id' 
+                          ? 'Selesaikan babak tanpa mengambil token mint: -1 Bypass & -1 Kunci Khusus!'
+                          : 'Completed without collecting mint tokens: -1 Bypass & -1 Special Key!'}
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+
                 {/* Earned Badges Showcase */}
                 {earnedBadges.length > 0 && (
-                  <div className="mt-5 text-center px-4 max-w-sm">
-                    <span className="text-[10px] font-mono text-deep-navy/50 uppercase tracking-widest block mb-2">{translations[lang].mazeboard.earned_badges}</span>
-                    <div className="flex flex-wrap justify-center gap-2">
+                  <div className="mt-4 md:mt-5 text-center px-4 w-full max-w-sm shrink-0">
+                    <span className="text-[9px] md:text-[10px] font-mono text-deep-navy/50 uppercase tracking-widest block mb-2">{translations[lang].mazeboard.earned_badges}</span>
+                    <div className="flex flex-wrap justify-center gap-1.5">
                       {earnedBadges.map(badgeId => {
                         const b = BADGES.find(x => x.id === badgeId);
                         if (!b) return null;
@@ -1417,11 +1471,11 @@ export default function MazeBoard({
                             initial={{ scale: 0, rotate: -15 }}
                             animate={{ scale: 1, rotate: 0 }}
                             transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                            className={`text-xs font-mono px-2 py-1 rounded-lg flex items-center gap-1.5 border ${styleClasses} shadow-sm`}
+                            className={`text-[9px] md:text-xs font-mono px-2 py-0.5 md:py-1 rounded-lg flex items-center gap-1.5 border ${styleClasses} shadow-sm`}
                             title={bLocal.description}
                           >
-                            <span className="text-sm">{b.emoji}</span>
-                            <span className="font-semibold text-[10px]">{bLocal.name}</span>
+                            <span className="text-xs md:text-sm">{b.emoji}</span>
+                            <span className="font-semibold text-[9px] md:text-[10px]">{bLocal.name}</span>
                           </motion.div>
                         );
                       })}
@@ -1430,10 +1484,10 @@ export default function MazeBoard({
                 )}
 
                 {/* Share Run Stats Action */}
-                <div className="mt-5 w-full max-w-xs px-4">
+                <div className="mt-4 md:mt-5 w-full max-w-xs px-4 shrink-0">
                   <button
                     onClick={handleShareStats}
-                    className={`w-full py-2.5 px-4 rounded-xl font-sans font-bold text-xs flex items-center justify-center gap-2 border transition shadow-sm cursor-pointer ${
+                    className={`w-full py-2 md:py-2.5 px-4 rounded-xl font-sans font-bold text-[11px] md:text-xs flex items-center justify-center gap-2 border transition shadow-sm cursor-pointer ${
                       shareCopied
                         ? 'bg-emerald-500 border-emerald-600 text-white shadow-emerald-500/10'
                         : 'bg-gradient-to-r from-cerulean-sky/5 to-cerulean-sky/10 border-cerulean-sky/20 text-cerulean-sky hover:from-cerulean-sky/10 hover:to-cerulean-sky/20'
@@ -1453,8 +1507,8 @@ export default function MazeBoard({
                   </button>
                 </div>
 
-                {isCampaign && (
-                  <div className="mt-6 flex flex-col sm:flex-row gap-3 w-full max-w-xs px-4">
+                {isCampaign ? (
+                  <div className="mt-4 md:mt-6 flex flex-col sm:flex-row gap-2.5 w-full max-w-xs px-4 pb-4 shrink-0">
                     {campaignLevel < 1000 ? (
                       <button
                         onClick={() => {
@@ -1463,7 +1517,7 @@ export default function MazeBoard({
                             onLevelCompleted(campaignLevel + 1);
                           }
                         }}
-                        className="flex-1 py-2.5 bg-deep-navy text-white font-sans font-bold rounded-xl text-xs shadow-md shadow-deep-navy/20 cursor-pointer hover:bg-deep-navy/90 transition text-center"
+                        className="flex-1 py-2 md:py-2.5 bg-deep-navy text-white font-sans font-bold rounded-xl text-[11px] md:text-xs shadow-md shadow-deep-navy/20 cursor-pointer hover:bg-deep-navy/90 transition text-center"
                       >
                         {lang === 'id' ? `Level Berikutnya (${campaignLevel + 1})` : `Next Level (${campaignLevel + 1})`}
                       </button>
@@ -1477,7 +1531,28 @@ export default function MazeBoard({
                         sound.playMove();
                         onBackToMenu();
                       }}
-                      className="flex-1 py-2.5 font-sans font-semibold rounded-xl text-xs transition cursor-pointer border bg-white border-deep-navy/15 text-deep-navy hover:bg-cloud-white shadow-sm"
+                      className="flex-1 py-2 md:py-2.5 font-sans font-semibold rounded-xl text-[11px] md:text-xs transition cursor-pointer border bg-white border-deep-navy/15 text-deep-navy hover:bg-cloud-white shadow-sm"
+                    >
+                      {lang === 'id' ? 'Kembali ke Menu' : 'Back to Menu'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mt-4 md:mt-6 flex flex-col sm:flex-row gap-2.5 w-full max-w-xs px-4 pb-4 shrink-0">
+                    <button
+                      onClick={() => {
+                        sound.playPowerup();
+                        generateMaze(true);
+                      }}
+                      className="flex-1 py-2 md:py-2.5 bg-deep-navy text-white font-sans font-bold rounded-xl text-[11px] md:text-xs shadow-md shadow-deep-navy/20 cursor-pointer hover:bg-deep-navy/90 transition text-center"
+                    >
+                      {lang === 'id' ? 'Main Lagi' : 'Play Again'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        sound.playMove();
+                        onBackToMenu();
+                      }}
+                      className="flex-1 py-2 md:py-2.5 font-sans font-semibold rounded-xl text-[11px] md:text-xs transition cursor-pointer border bg-white border-deep-navy/15 text-deep-navy hover:bg-cloud-white shadow-sm"
                     >
                       {lang === 'id' ? 'Kembali ke Menu' : 'Back to Menu'}
                     </button>
@@ -1486,7 +1561,7 @@ export default function MazeBoard({
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
+        </motion.div>
 
         {/* Keyboards Hints for PC Users */}
         <p className="hidden md:block text-[10px] font-mono mt-4 text-center text-deep-navy/50">
