@@ -26,6 +26,7 @@ import {
   ArrowBigRight,
   Eye,
   CheckCircle,
+  Share2,
   TrendingUp,
   Sparkles,
   Info,
@@ -79,12 +80,13 @@ export default function MazeBoard({
   // Determine grid size based on difficulty
   const getGridConfig = (diff: Difficulty, isCamp?: boolean, campLvl?: number) => {
     if (isCamp && campLvl) {
-      const levelCols = Math.min(21, 4 + Math.floor((campLvl - 1) * 0.35));
+      // Linear scaling from level 1 (5x5) to level 1000 (21x21)
+      const levelCols = Math.min(21, 5 + Math.floor(((campLvl - 1) / 999) * 16));
       const levelRows = levelCols;
       const totalCells = levelCols * levelRows;
-      const gasCount = Math.max(1, Math.min(12, Math.floor(totalCells * 0.03)));
-      const valCount = Math.max(1, Math.min(5, Math.floor(totalCells * 0.015)));
-      const hasPortal = campLvl >= 5;
+      const gasCount = Math.max(1, Math.min(15, Math.floor(totalCells * 0.04)));
+      const valCount = Math.max(1, Math.min(6, Math.floor(totalCells * 0.02)));
+      const hasPortal = campLvl >= 10; // Portals unlocked starting from level 10
       return { cols: levelCols, rows: levelRows, gasCount, valCount, hasPortal };
     }
 
@@ -117,6 +119,16 @@ export default function MazeBoard({
   const [isReady, setIsReady] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [hasWon, setHasWon] = useState(false);
+  const [floatingFeedbacks, setFloatingFeedbacks] = useState<{ id: number; text: string; type: string }[]>([]);
+  
+  const triggerFeedback = (text: string, type: string) => {
+    const id = Date.now() + Math.random();
+    setFloatingFeedbacks(prev => [...prev, { id, text, type }]);
+    setTimeout(() => {
+      setFloatingFeedbacks(prev => prev.filter(item => item.id !== id));
+    }, 1500);
+  };
+
   const [blockHeight, setBlockHeight] = useState(18442000);
   const [autoSolving, setAutoSolving] = useState(false);
 
@@ -137,6 +149,82 @@ export default function MazeBoard({
   const [hasEnabledHints, setHasEnabledHints] = useState(false);
   const [earnedBadges, setEarnedBadges] = useState<string[]>([]);
   const [particles, setParticles] = useState<Particle[]>([]);
+  const [shareCopied, setShareCopied] = useState(false);
+
+  const handleShareStats = () => {
+    const optimalMoves = shortestPath.length > 0 ? shortestPath.length : 1;
+    const actualMoves = Math.max(1, stats.transactionsMade);
+    const computedEfficiency = Math.max(1, Math.min(100, Number(((optimalMoves / actualMoves) * 100).toFixed(1))));
+    const computedTPS = (cols * rows * 120) / Math.max(0.5, stats.timeElapsed);
+    const finalGasGwei = Math.max(1, Math.round(stats.gasCost * 1000));
+
+    const emojiMap: Record<string, string> = {
+      'speedster': '⚡',
+      'speed-demon': '🚀',
+      'explorer': '🔍',
+      'batch-master': '📦',
+      'superchain-overlord': '👑',
+      'gas-optimizer': '🍃',
+      'wall-breaker': '🔨',
+      'no-hints': '🧠'
+    };
+    const badgeIcons = earnedBadges.map(bId => emojiMap[bId] || '').filter(Boolean).join('');
+
+    const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://ais-dev-d5wew2rrpvpsatud27lhly-555355811670.asia-southeast1.run.app';
+
+    let textToCopy = '';
+    if (lang === 'id') {
+      textToCopy = [
+        `⚡ BLOK LABIRIN BASE B20! ⚡`,
+        `👤 Pembuat: ${playerName || 'Soul'}`,
+        `🎮 Mode: ${isCampaign ? `Lvl ${campaignLevel}` : difficulty.toUpperCase()}`,
+        `⏱️ ${stats.timeElapsed.toFixed(2)}s | ⚡ ${computedTPS.toFixed(1)} TPS | ⛽ ${finalGasGwei} Gwei`,
+        `🎯 Efisiensi: ${computedEfficiency}%`,
+        badgeIcons ? `🏆 Lencana: ${badgeIcons}` : null,
+        `🔗 Main: ${appUrl}`,
+      ].filter(Boolean).join('\n');
+    } else if (lang === 'fr') {
+      textToCopy = [
+        `⚡ BLOC DE LABYRINTHE BASE! ⚡`,
+        `👤 Bâtisseur: ${playerName || 'Soul'}`,
+        `🎮 Mode: ${isCampaign ? `Niv ${campaignLevel}` : difficulty.toUpperCase()}`,
+        `⏱️ ${stats.timeElapsed.toFixed(2)}s | ⚡ ${computedTPS.toFixed(1)} TPS | ⛽ ${finalGasGwei} Gwei`,
+        `🎯 Efficacité: ${computedEfficiency}%`,
+        badgeIcons ? `🏆 Badges: ${badgeIcons}` : null,
+        `🔗 Jouer: ${appUrl}`,
+      ].filter(Boolean).join('\n');
+    } else if (lang === 'zh') {
+      textToCopy = [
+        `⚡ BASE B20 迷宫区块！⚡`,
+        `👤 建设者: ${playerName || 'Soul'}`,
+        `🎮 模式: ${isCampaign ? `关卡 ${campaignLevel}` : difficulty.toUpperCase()}`,
+        `⏱️ ${stats.timeElapsed.toFixed(2)}秒 | ⚡ ${computedTPS.toFixed(1)} TPS | ⛽ ${finalGasGwei} Gwei`,
+        `🎯 效率: ${computedEfficiency}%`,
+        badgeIcons ? `🏆 徽章: ${badgeIcons}` : null,
+        `🔗 开始建造: ${appUrl}`,
+      ].filter(Boolean).join('\n');
+    } else {
+      textToCopy = [
+        `⚡ BASE B20 MAZE BLOCK! ⚡`,
+        `👤 Builder: ${playerName || 'Soul'}`,
+        `🎮 Mode: ${isCampaign ? `Lvl ${campaignLevel}` : difficulty.toUpperCase()}`,
+        `⏱️ ${stats.timeElapsed.toFixed(2)}s | ⚡ ${computedTPS.toFixed(1)} TPS | ⛽ ${finalGasGwei} Gwei`,
+        `🎯 Efficiency: ${computedEfficiency}%`,
+        badgeIcons ? `🏆 Badges: ${badgeIcons}` : null,
+        `🔗 Play: ${appUrl}`,
+      ].filter(Boolean).join('\n');
+    }
+
+    navigator.clipboard.writeText(textToCopy)
+      .then(() => {
+        setShareCopied(true);
+        sound.playPowerup();
+        setTimeout(() => setShareCopied(false), 2500);
+      })
+      .catch((err) => {
+        console.error('Failed to copy text: ', err);
+      });
+  };
 
   // Solved Path State
   const [shortestPath, setShortestPath] = useState<[number, number][]>([]);
@@ -258,6 +346,14 @@ export default function MazeBoard({
     }
 
     // 2. DFS Maze Generation Algorithm with backtracking
+    // Seeded random for deterministic procedural levels
+    let randomSeed = isCampaign ? campaignLevel * 15485863 : 12345;
+    const seedRandom = () => {
+      if (!isCampaign) return Math.random();
+      randomSeed = (randomSeed * 1664525 + 1013904223) % 4294967296;
+      return randomSeed / 4294967296;
+    };
+
     const stack: Cell[] = [];
     let current = initialGrid[0][0];
     current.visited = true;
@@ -299,7 +395,7 @@ export default function MazeBoard({
     while (unvisitedCount > 0) {
       const neighbors = getUnvisitedNeighbors(current, initialGrid);
       if (neighbors.length > 0) {
-        const next = neighbors[Math.floor(Math.random() * neighbors.length)];
+        const next = neighbors[Math.floor(seedRandom() * neighbors.length)];
         stack.push(current);
         removeWalls(current, next);
         next.visited = true;
@@ -316,8 +412,8 @@ export default function MazeBoard({
     // Gas Nodes (Gwei savers)
     let gasPlaced = 0;
     while (gasPlaced < config.gasCount) {
-      const rx = Math.floor(Math.random() * cols);
-      const ry = Math.floor(Math.random() * rows);
+      const rx = Math.floor(seedRandom() * cols);
+      const ry = Math.floor(seedRandom() * rows);
       // Don't place on start, exit, or existing items
       if (
         (rx === 0 && ry === 0) ||
@@ -334,9 +430,9 @@ export default function MazeBoard({
     // Validator Nodes (power-ups / bypass keys)
     let valPlaced = 0;
     if (isCampaign) {
-      // Scale spawn rate from 10% (0.10) at Level 1 down to 0.001% (0.00001) at Level 50
-      const validatorSpawnRate = Math.max(0.00001, 0.10 - ((campaignLevel - 1) / 49) * 0.09999);
-      const maxVal = Math.max(1, Math.min(5, Math.floor((cols * rows) * validatorSpawnRate))); // Max capped proportionally
+      // Scale spawn rate from 12% (0.12) at Level 1 down to 2% (0.02) at Level 1000
+      const validatorSpawnRate = Math.max(0.02, 0.12 - ((campaignLevel - 1) / 999) * 0.10);
+      const maxVal = Math.max(1, Math.min(6, Math.floor((cols * rows) * validatorSpawnRate))); // Max capped proportionally
       
       for (let y = 0; y < rows; y++) {
         for (let x = 0; x < cols; x++) {
@@ -351,7 +447,7 @@ export default function MazeBoard({
           ) {
             continue;
           }
-          if (Math.random() < validatorSpawnRate) {
+          if (seedRandom() < validatorSpawnRate) {
             cell.isValidatorNode = true;
             valPlaced++;
           }
@@ -364,8 +460,8 @@ export default function MazeBoard({
         let attempts = 0;
         while (!placedForce && attempts < 100) {
           attempts++;
-          const rx = Math.floor(Math.random() * cols);
-          const ry = Math.floor(Math.random() * rows);
+          const rx = Math.floor(seedRandom() * cols);
+          const ry = Math.floor(seedRandom() * rows);
           const cell = initialGrid[ry][rx];
           if (
             (rx === 0 && ry === 0) ||
@@ -383,8 +479,8 @@ export default function MazeBoard({
     } else {
       // Classic mode uses standard valCount setup
       while (valPlaced < config.valCount) {
-        const rx = Math.floor(Math.random() * cols);
-        const ry = Math.floor(Math.random() * rows);
+        const rx = Math.floor(seedRandom() * cols);
+        const ry = Math.floor(seedRandom() * rows);
         const cell = initialGrid[ry][rx];
         if (
           (rx === 0 && ry === 0) ||
@@ -406,16 +502,16 @@ export default function MazeBoard({
       let portalB: { x: number; y: number } | null = null;
 
       while (!portalA) {
-        const rx = Math.floor(Math.random() * (cols / 2));
-        const ry = Math.floor(Math.random() * (rows / 2));
+        const rx = Math.floor(seedRandom() * (cols / 2));
+        const ry = Math.floor(seedRandom() * (rows / 2));
         if ((rx !== 0 || ry !== 0) && !initialGrid[ry][rx].isGasNode && !initialGrid[ry][rx].isValidatorNode) {
           portalA = { x: rx, y: ry };
         }
       }
 
       while (!portalB) {
-        const rx = Math.floor(cols / 2 + Math.random() * (cols / 2));
-        const ry = Math.floor(rows / 2 + Math.random() * (rows / 2));
+        const rx = Math.floor(cols / 2 + seedRandom() * (cols / 2));
+        const ry = Math.floor(rows / 2 + seedRandom() * (rows / 2));
         if ((rx !== cols - 1 || ry !== rows - 1) && !initialGrid[ry][rx].isGasNode && !initialGrid[ry][rx].isValidatorNode) {
           portalB = { x: rx, y: ry };
         }
@@ -429,14 +525,14 @@ export default function MazeBoard({
     }
 
     // 4. Inject Special Tokens
-    // Scale level presence chance from 10% (0.10) at Level 1 down to 0.001% (0.00001) at Level 50
-    const specialTokenLevelProb = isCampaign ? Math.max(0.00001, 0.10 - ((campaignLevel - 1) / 49) * 0.09999) : 0.45;
-    // Scale cell density chance from 10% (0.10) at Level 1 down to 0.001% (0.00001) at Level 50
-    const specialTokenCellRate = isCampaign ? Math.max(0.00001, 0.10 - ((campaignLevel - 1) / 49) * 0.09999) : 0.02;
+    // Scale level presence chance from 60% at Level 1 down to 10% at Level 1000
+    const specialTokenLevelProb = isCampaign ? Math.max(0.10, 0.60 - ((campaignLevel - 1) / 999) * 0.50) : 0.45;
+    // Scale cell density chance from 10% at Level 1 down to 1% at Level 1000
+    const specialTokenCellRate = isCampaign ? Math.max(0.01, 0.10 - ((campaignLevel - 1) / 999) * 0.09) : 0.02;
 
     let keysPlaced = 0;
     const maxKeys = cols <= 10 ? 1 : 2;
-    const hasKeysThisLevel = Math.random() < specialTokenLevelProb;
+    const hasKeysThisLevel = seedRandom() < specialTokenLevelProb;
 
     if (hasKeysThisLevel) {
       for (let y = 0; y < rows; y++) {
@@ -453,7 +549,7 @@ export default function MazeBoard({
           ) {
             continue;
           }
-          if (Math.random() < specialTokenCellRate) {
+          if (seedRandom() < specialTokenCellRate) {
             cell.isSpecialToken = true;
             keysPlaced++;
           }
@@ -639,6 +735,7 @@ export default function MazeBoard({
         }
         setGrid(newGrid);
         sound.playPowerup();
+        triggerFeedback('Firewall Broken!', 'firewall');
         setHasUsedBypass(true);
         if (onQuestProgress) {
           onQuestProgress('wall_breaker', 1);
@@ -662,18 +759,23 @@ export default function MazeBoard({
         nextCell.isGasNode = false;
         collectedGas = 1;
         sound.playCoin();
+        triggerFeedback('+5 Gas', 'gas');
       }
 
       if (nextCell.isValidatorNode) {
         nextCell.isValidatorNode = false;
         collectedVal = 1;
         sound.playPowerup();
+        triggerFeedback('+1 Validator', 'validator');
       }
 
       if (nextCell.isSpecialToken) {
         nextCell.isSpecialToken = false;
         sound.playPowerup();
         setSpecialTokens(prev => prev + 1);
+        triggerFeedback('+1 Key', 'key');
+        const curKeys = Number(localStorage.getItem('base_maze_profile_keys_collected') || '0');
+        localStorage.setItem('base_maze_profile_keys_collected', String(curKeys + 1));
       }
 
       // Check Portal Teleportation
@@ -683,6 +785,7 @@ export default function MazeBoard({
         finalX = nextCell.portalTarget.x;
         finalY = nextCell.portalTarget.y;
         sound.playWin(); // Teleport sound
+        triggerFeedback('Portal Activated!', 'portal');
       }
 
       setPlayer({ x: finalX, y: finalY });
@@ -776,6 +879,11 @@ export default function MazeBoard({
 
     // Wait slightly to show successful animation, then complete
     setTimeout(() => {
+      // Calculate efficiency based on shortest path vs moves made
+      const optimalMoves = shortestPath.length > 0 ? shortestPath.length : 1;
+      const actualMoves = Math.max(1, stats.transactionsMade);
+      const computedEfficiency = Math.max(1, Math.min(100, Number(((optimalMoves / actualMoves) * 100).toFixed(1))));
+
       const result: ScoreEntry = {
         id: 'user-' + Date.now(),
         name: playerName,
@@ -785,31 +893,61 @@ export default function MazeBoard({
         gasUsed: finalGasGwei,
         blockHeight: blockHeight,
         date: new Date().toISOString().split('T')[0],
-        badges: currentEarnedBadges
+        badges: currentEarnedBadges,
+        totalMoves: stats.transactionsMade,
+        bestEfficiency: computedEfficiency,
+        level: isCampaign ? campaignLevel : undefined
       };
+
+      // Update Player Progression Stats in localStorage
+      try {
+        const prevTotalMoves = Number(localStorage.getItem('base_maze_profile_total_moves') || '0');
+        const prevTotalTime = Number(localStorage.getItem('base_maze_profile_total_time') || '0');
+        const prevTotalGas = Number(localStorage.getItem('base_maze_profile_total_gas') || '0');
+        const prevFirewalls = Number(localStorage.getItem('base_maze_profile_firewalls_destroyed') || '0');
+        const prevScore = Number(localStorage.getItem('base_maze_profile_score') || '0');
+        const prevWinStreak = Number(localStorage.getItem('base_maze_profile_win_streak') || '0');
+        const prevXp = Number(localStorage.getItem('base_maze_profile_xp') || '0');
+
+        // Calculate score for this level
+        const thisLevelScore = Math.max(50, Math.round(computedTPS * 10 - finalGasGwei));
+        // XP: 150 for campaign level, 100 for classic
+        const thisLevelXp = isCampaign ? 150 : 100;
+
+        localStorage.setItem('base_maze_profile_total_moves', String(prevTotalMoves + stats.transactionsMade));
+        localStorage.setItem('base_maze_profile_total_time', String(prevTotalTime + Math.round(timeToComplete)));
+        localStorage.setItem('base_maze_profile_total_gas', String(prevTotalGas + finalGasGwei));
+        localStorage.setItem('base_maze_profile_firewalls_destroyed', String(prevFirewalls + (hasUsedBypass ? 1 : 0)));
+        localStorage.setItem('base_maze_profile_score', String(prevScore + thisLevelScore));
+        localStorage.setItem('base_maze_profile_win_streak', String(prevWinStreak + 1));
+        localStorage.setItem('base_maze_profile_xp', String(prevXp + thisLevelXp));
+      } catch (e) {
+        console.error("Error updating player profile stats", e);
+      }
+
+      // Retrieve and update leaderboard scores
+      const savedScores = localStorage.getItem('base_maze_scores');
+      let currentScores: ScoreEntry[] = [];
+      if (savedScores) {
+        try {
+          currentScores = JSON.parse(savedScores);
+        } catch (e) {
+          currentScores = [];
+        }
+      }
+      
+      const updatedScores = [...currentScores, result].sort((a, b) => a.time - b.time);
+      localStorage.setItem('base_maze_scores', JSON.stringify(updatedScores));
+      localStorage.setItem('base_maze_last_run_stats', JSON.stringify(result));
 
       if (isCampaign) {
         // Update level unlocks
         const currentUnlocked = Number(localStorage.getItem('base_maze_unlocked_level') || '1');
         const nextLevel = campaignLevel + 1;
-        if (nextLevel > currentUnlocked && nextLevel <= 50) {
+        if (nextLevel > currentUnlocked && nextLevel <= 1000) {
           localStorage.setItem('base_maze_unlocked_level', String(nextLevel));
         }
       } else {
-        // Retrieve current leaderboard scores
-        const savedScores = localStorage.getItem('base_maze_scores');
-        let currentScores: ScoreEntry[] = [];
-        if (savedScores) {
-          try {
-            currentScores = JSON.parse(savedScores);
-          } catch (e) {
-            currentScores = [];
-          }
-        }
-        // Add current score and save
-        const updatedScores = [...currentScores, result].sort((a, b) => a.time - b.time);
-        localStorage.setItem('base_maze_scores', JSON.stringify(updatedScores));
-
         onGameCompleted(result);
       }
     }, 1500);
@@ -896,6 +1034,8 @@ export default function MazeBoard({
             newGrid[y][x].isSpecialToken = false;
             sound.playPowerup();
             setSpecialTokens(prev => prev + 1);
+            const curKeys = Number(localStorage.getItem('base_maze_profile_keys_collected') || '0');
+            localStorage.setItem('base_maze_profile_keys_collected', String(curKeys + 1));
           }
           return newGrid;
         });
@@ -1289,9 +1429,33 @@ export default function MazeBoard({
                   </div>
                 )}
 
+                {/* Share Run Stats Action */}
+                <div className="mt-5 w-full max-w-xs px-4">
+                  <button
+                    onClick={handleShareStats}
+                    className={`w-full py-2.5 px-4 rounded-xl font-sans font-bold text-xs flex items-center justify-center gap-2 border transition shadow-sm cursor-pointer ${
+                      shareCopied
+                        ? 'bg-emerald-500 border-emerald-600 text-white shadow-emerald-500/10'
+                        : 'bg-gradient-to-r from-cerulean-sky/5 to-cerulean-sky/10 border-cerulean-sky/20 text-cerulean-sky hover:from-cerulean-sky/10 hover:to-cerulean-sky/20'
+                    }`}
+                  >
+                    {shareCopied ? (
+                      <>
+                        <CheckCircle size={14} className="animate-pulse" />
+                        <span>{lang === 'id' ? 'Berhasil Disalin!' : 'Copied to Clipboard!'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Share2 size={14} />
+                        <span>{lang === 'id' ? 'Bagikan Hasil Run' : 'Share Run Stats'}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
                 {isCampaign && (
                   <div className="mt-6 flex flex-col sm:flex-row gap-3 w-full max-w-xs px-4">
-                    {campaignLevel < 50 ? (
+                    {campaignLevel < 1000 ? (
                       <button
                         onClick={() => {
                           sound.playPowerup();
@@ -1305,7 +1469,7 @@ export default function MazeBoard({
                       </button>
                     ) : (
                       <div className="w-full text-center py-2 text-warm-red font-extrabold font-mono text-xs animate-pulse">
-                        🎉 {lang === 'id' ? 'TAMAT! SELESAI LEVEL 50!' : 'CAMPAIGN COMPLETED! LEVEL 50!'}
+                        🎉 {lang === 'id' ? 'TAMAT! SELESAI LEVEL 1000!' : 'CAMPAIGN COMPLETED! LEVEL 1000!'}
                       </div>
                     )}
                     <button

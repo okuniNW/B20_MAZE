@@ -366,71 +366,295 @@ export default function BaseHub({
               </motion.div>
             )}
 
-            {/* PROFILES (THEME CHANGER) */}
-            {activeTab === 'profile' && (
-              <motion.div
-                key="profile-tab"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                className="space-y-4"
-              >
-                <div className="text-center mb-1">
-                  <h4 className="font-serif text-base font-bold text-deep-navy">
-                    {lang === 'id' ? 'Profil Jaringan Layer-2' : 'Layer-2 Network Styles'}
-                  </h4>
-                  <p className="text-[11px] text-deep-navy/60">
-                    {lang === 'id' 
-                      ? 'Personalisasikan estetika visual berdasarkan jaringan L2 favorit Anda.' 
-                      : 'Personalize the visual theme to match your favorite Ethereum rollup platform.'}
-                  </p>
-                </div>
+            {/* PROFILES & PROGRESSION */}
+            {activeTab === 'profile' && (() => {
+              // Load statistics from localStorage or fallback to aggregations
+              let scores = [];
+              try {
+                const scoresStr = localStorage.getItem('base_maze_scores');
+                if (scoresStr) {
+                  scores = JSON.parse(scoresStr);
+                }
+              } catch(e){}
 
-                <div className="grid grid-cols-2 gap-3">
-                  {(Object.keys(L2_THEMES) as L2Theme[]).map((themeKey) => {
-                    const activeConf = L2_THEMES[themeKey];
-                    const isSelected = l2Theme === themeKey;
-                    return (
-                      <button
-                        key={themeKey}
-                        onClick={() => {
-                          sound.playMove();
-                          setL2Theme(themeKey);
-                        }}
-                        className={`p-4 rounded-2xl text-left border cursor-pointer transition-all flex flex-col justify-between ${
-                          isSelected
-                            ? 'bg-cloud-white border-2 shadow-sm scale-[1.02]'
-                            : 'bg-white/50 border-deep-navy/10 hover:border-deep-navy/20 hover:bg-white'
-                        }`}
-                        style={isSelected ? { borderColor: activeConf.accentColor } : undefined}
-                      >
-                        <div className="flex items-center justify-between w-full">
-                          <span className="font-mono text-[10px] font-bold text-deep-navy/50">
-                            {activeConf.ticker}
-                          </span>
-                          {isSelected && (
-                            <span 
-                              className="w-4 h-4 rounded-full flex items-center justify-center text-white"
-                              style={{ backgroundColor: activeConf.accentColor }}
-                            >
-                              <Check size={10} strokeWidth={3} />
-                            </span>
-                          )}
+              const unlockedLevel = Number(localStorage.getItem('base_maze_unlocked_level') || '1');
+              const highestLevel = Math.max(1, unlockedLevel - 1);
+              const activePlayerName = localStorage.getItem('base_maze_player_name') || 'Anonymous Builder';
+              
+              let aggMoves = 0;
+              let aggTime = 0;
+              let aggGas = 0;
+              let aggFirewalls = 0;
+              let aggScore = 0;
+              
+              scores.forEach((s: any) => {
+                aggMoves += s.totalMoves || Math.round(s.time * 2);
+                aggTime += s.time;
+                aggGas += s.gasUsed;
+                if (s.badges && s.badges.includes('wall-breaker')) {
+                  aggFirewalls += 1;
+                }
+                aggScore += Math.max(50, Math.round(s.tps * 10 - s.gasUsed));
+              });
+
+              const totalMoves = Number(localStorage.getItem('base_maze_profile_total_moves') || String(aggMoves));
+              const totalTime = Number(localStorage.getItem('base_maze_profile_total_time') || String(aggTime));
+              const totalGas = Number(localStorage.getItem('base_maze_profile_total_gas') || String(aggGas));
+              const firewallsDestroyed = Number(localStorage.getItem('base_maze_profile_firewalls_destroyed') || String(aggFirewalls));
+              const builderScore = Number(localStorage.getItem('base_maze_profile_score') || String(aggScore));
+              const winStreak = Number(localStorage.getItem('base_maze_profile_win_streak') || String(scores.length));
+              
+              let computedXp = 0;
+              scores.forEach((s: any) => {
+                if (s.difficulty === 'campaign') {
+                  computedXp += 150;
+                } else {
+                  computedXp += 100;
+                }
+              });
+              const xp = Number(localStorage.getItem('base_maze_profile_xp') || String(computedXp));
+              const keysCollected = Number(localStorage.getItem('base_maze_profile_keys_collected') || String(Math.floor(xp / 80)));
+
+              const builderLevel = Math.floor(xp / 1000) + 1;
+              const xpIntoLevel = xp % 1000;
+              const percentToNextLevel = Math.min(100, Math.round((xpIntoLevel / 1000) * 100));
+
+              const getRankName = (lvl: number) => {
+                if (lvl <= 2) return lang === 'id' ? 'Genesis Builder' : 'Genesis Builder';
+                if (lvl <= 4) return lang === 'id' ? 'Kadet Akademi Gas' : 'Gas Academy Cadet';
+                if (lvl <= 6) return lang === 'id' ? 'Aspiran Validator' : 'Validator Aspirant';
+                if (lvl <= 8) return lang === 'id' ? 'Netrunner Tembok Api' : 'Firewall Netrunner';
+                if (lvl <= 10) return lang === 'id' ? 'Arsitek Superchain' : 'Superchain Architect';
+                return lang === 'id' ? 'Sentinel Nexus' : 'Nexus Sentinel';
+              };
+
+              const rankName = getRankName(builderLevel);
+
+              return (
+                <motion.div
+                  key="profile-tab"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  className="space-y-6"
+                >
+                  {/* Builder Identity Card */}
+                  <div className="relative rounded-2xl bg-gradient-to-br from-[#0F172A] to-[#1E293B] border border-white/10 text-white p-5 shadow-lg overflow-hidden font-sans">
+                    {/* Background glows */}
+                    <div className="absolute -top-12 -right-12 w-24 h-24 bg-[#0052FF]/20 rounded-full blur-2xl pointer-events-none"></div>
+                    <div className="absolute -bottom-12 -left-12 w-24 h-24 bg-purple-500/15 rounded-full blur-2xl pointer-events-none"></div>
+
+                    <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-[#0052FF]/10 border border-[#0052FF]/30 flex items-center justify-center text-xs font-bold font-mono">
+                          B20
                         </div>
-                        <div className="mt-4">
-                          <h5 className="font-serif font-bold text-sm text-deep-navy leading-none">
-                            {activeConf.name}
-                          </h5>
-                          <span className="text-[9px] font-mono opacity-80 mt-1 block" style={{ color: activeConf.accentColor }}>
-                            {activeConf.accentColor}
-                          </span>
+                        <div>
+                          <h5 className="text-[10px] font-mono tracking-widest text-slate-400 uppercase leading-none">Builder Passport</h5>
+                          <span className="text-[8px] font-mono text-slate-500 leading-none">ID: BASE-L2-PROMO</span>
                         </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </motion.div>
-            )}
+                      </div>
+                      <span className="text-[9px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
+                        ACTIVE NODE
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div>
+                        <div className="text-sm font-bold font-mono text-white tracking-wide">
+                          {activePlayerName}
+                        </div>
+                        <div className="text-[10px] font-mono text-slate-400 mt-0.5 flex items-center gap-1.5">
+                          <span className="text-[#0052FF] font-bold">Lvl {builderLevel}</span>
+                          <span>•</span>
+                          <span className="text-purple-300 font-semibold">{rankName}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex-1 max-w-xs">
+                        <div className="flex items-center justify-between text-[9px] font-mono text-slate-400 mb-1">
+                          <span>XP: {xpIntoLevel}/1000</span>
+                          <span>{percentToNextLevel}%</span>
+                        </div>
+                        <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden border border-white/5">
+                          <div 
+                            className="bg-gradient-to-r from-[#0052FF] to-purple-500 h-1.5 rounded-full transition-all duration-500"
+                            style={{ width: `${percentToNextLevel}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Player Progression Statistics Grid */}
+                  <div>
+                    <h5 className="font-mono text-[10px] text-deep-navy/40 uppercase tracking-widest font-bold mb-2.5 px-1">
+                      {lang === 'id' ? 'Statistik Pencapaian' : 'Performance Achievements'}
+                    </h5>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="bg-white/45 hover:bg-white/70 border border-deep-navy/5 p-2.5 rounded-xl flex flex-col justify-between transition">
+                        <span className="text-[8px] font-mono text-deep-navy/50 uppercase leading-tight">Highest Level</span>
+                        <span className="text-sm font-bold font-mono text-deep-navy tracking-tight mt-1">
+                          #{highestLevel}
+                        </span>
+                      </div>
+                      <div className="bg-white/45 hover:bg-white/70 border border-deep-navy/5 p-2.5 rounded-xl flex flex-col justify-between transition">
+                        <span className="text-[8px] font-mono text-deep-navy/50 uppercase leading-tight">Total XP</span>
+                        <span className="text-sm font-bold font-mono text-cerulean-sky tracking-tight mt-1">
+                          {xp.toLocaleString()} XP
+                        </span>
+                      </div>
+                      <div className="bg-white/45 hover:bg-white/70 border border-deep-navy/5 p-2.5 rounded-xl flex flex-col justify-between transition">
+                        <span className="text-[8px] font-mono text-deep-navy/50 uppercase leading-tight">Builder Score</span>
+                        <span className="text-sm font-bold font-mono text-indigo-600 tracking-tight mt-1">
+                          {builderScore.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="bg-white/45 hover:bg-white/70 border border-deep-navy/5 p-2.5 rounded-xl flex flex-col justify-between transition">
+                        <span className="text-[8px] font-mono text-deep-navy/50 uppercase leading-tight">Win Streak</span>
+                        <span className="text-sm font-bold font-mono text-amber-500 tracking-tight mt-1 flex items-center gap-1">
+                          {winStreak} <span className="text-xs">🔥</span>
+                        </span>
+                      </div>
+                      <div className="bg-white/45 hover:bg-white/70 border border-deep-navy/5 p-2.5 rounded-xl flex flex-col justify-between transition">
+                        <span className="text-[8px] font-mono text-deep-navy/50 uppercase leading-tight">Total Moves</span>
+                        <span className="text-sm font-bold font-mono text-deep-navy/80 tracking-tight mt-1">
+                          {totalMoves.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="bg-white/45 hover:bg-white/70 border border-deep-navy/5 p-2.5 rounded-xl flex flex-col justify-between transition">
+                        <span className="text-[8px] font-mono text-deep-navy/50 uppercase leading-tight">Total Time</span>
+                        <span className="text-xs font-bold font-mono text-deep-navy/80 tracking-tight mt-1">
+                          {Math.floor(totalTime / 60)}m {totalTime % 60}s
+                        </span>
+                      </div>
+                      <div className="bg-white/45 hover:bg-white/70 border border-deep-navy/5 p-2.5 rounded-xl flex flex-col justify-between transition">
+                        <span className="text-[8px] font-mono text-deep-navy/50 uppercase leading-tight">Gas Used</span>
+                        <span className="text-sm font-bold font-mono text-warm-red tracking-tight mt-1">
+                          {totalGas.toLocaleString()} Gwei
+                        </span>
+                      </div>
+                      <div className="bg-white/45 hover:bg-white/70 border border-deep-navy/5 p-2.5 rounded-xl flex flex-col justify-between transition">
+                        <span className="text-[8px] font-mono text-deep-navy/50 uppercase leading-tight">Firewalls bypassed</span>
+                        <span className="text-sm font-bold font-mono text-purple-600 tracking-tight mt-1">
+                          {firewallsDestroyed}
+                        </span>
+                      </div>
+                      <div className="bg-white/45 hover:bg-white/70 border border-deep-navy/5 p-2.5 rounded-xl flex flex-col justify-between transition">
+                        <span className="text-[8px] font-mono text-deep-navy/50 uppercase leading-tight">Keys Collected</span>
+                        <span className="text-sm font-bold font-mono text-emerald-600 tracking-tight mt-1 flex items-center gap-1">
+                          {keysCollected} <span className="text-xs">🔑</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Milestone Achievements */}
+                  <div>
+                    <h5 className="font-mono text-[10px] text-deep-navy/40 uppercase tracking-widest font-bold mb-2.5 px-1">
+                      {lang === 'id' ? 'Pencapaian Milestone' : 'Milestone Achievements'}
+                    </h5>
+                    <div className="grid grid-cols-1 gap-2">
+                      {[
+                        { lvl: 100, name: 'Centennial Node', desc: lang === 'id' ? 'Mencapai Level 100' : 'Reach Level 100' },
+                        { lvl: 250, name: 'Quarter-K Pioneer', desc: lang === 'id' ? 'Mencapai Level 250' : 'Reach Level 250' },
+                        { lvl: 500, name: 'Half-K Warden', desc: lang === 'id' ? 'Mencapai Level 500' : 'Reach Level 500' },
+                        { lvl: 750, name: 'Three-Quarter Legend', desc: lang === 'id' ? 'Mencapai Level 750' : 'Reach Level 750' },
+                        { lvl: 1000, name: 'Millennial Master', desc: lang === 'id' ? 'Mencapai Level 1000' : 'Reach Level 1000' }
+                      ].map((m) => {
+                        const isUnlocked = highestLevel >= m.lvl;
+                        const progress = Math.min(100, Math.round((highestLevel / m.lvl) * 100));
+                        return (
+                          <div 
+                            key={m.lvl} 
+                            className={`p-3 rounded-xl border flex items-center justify-between gap-3 transition-all ${
+                              isUnlocked 
+                                ? 'bg-emerald-500/5 border-emerald-500/20 text-deep-navy'
+                                : 'bg-white/30 border-deep-navy/5 text-deep-navy/40'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-mono font-bold transition ${
+                                isUnlocked 
+                                  ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' 
+                                  : 'bg-slate-200/50 text-slate-400 border border-slate-300/30'
+                              }`}>
+                                {m.lvl}
+                              </div>
+                              <div>
+                                <h6 className={`text-xs font-bold leading-tight ${isUnlocked ? 'text-deep-navy' : 'text-deep-navy/60'}`}>
+                                  {m.name}
+                                </h6>
+                                <p className="text-[10px] opacity-75 leading-tight">
+                                  {m.desc} • {progress}%
+                                </p>
+                              </div>
+                            </div>
+
+                            {isUnlocked ? (
+                              <span className="w-5 h-5 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600">
+                                <CheckCircle2 size={12} strokeWidth={3} />
+                              </span>
+                            ) : (
+                              <div className="w-5 h-5 rounded-full bg-slate-200/40 border border-slate-300/20 flex items-center justify-center text-slate-400">
+                                <span className="text-[10px] font-mono">🔒</span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* L2 Themes selection */}
+                  <div>
+                    <h5 className="font-mono text-[10px] text-deep-navy/40 uppercase tracking-widest font-bold mb-2.5 px-1">
+                      {lang === 'id' ? 'Gaya Tampilan Jaringan' : 'Rollup Themes'}
+                    </h5>
+                    <div className="grid grid-cols-2 gap-3">
+                      {(Object.keys(L2_THEMES) as L2Theme[]).map((themeKey) => {
+                        const activeConf = L2_THEMES[themeKey];
+                        const isSelected = l2Theme === themeKey;
+                        return (
+                          <button
+                            key={themeKey}
+                            onClick={() => {
+                              sound.playMove();
+                              setL2Theme(themeKey);
+                            }}
+                            className={`p-3.5 rounded-2xl text-left border cursor-pointer transition-all flex flex-col justify-between ${
+                              isSelected
+                                ? 'bg-cloud-white border-2 shadow-sm scale-[1.02]'
+                                : 'bg-white/50 border-deep-navy/10 hover:border-deep-navy/20 hover:bg-white'
+                            }`}
+                            style={isSelected ? { borderColor: activeConf.accentColor } : undefined}
+                          >
+                            <div className="flex items-center justify-between w-full">
+                              <span className="font-mono text-[9px] font-bold text-deep-navy/50">
+                                {activeConf.ticker}
+                              </span>
+                              {isSelected && (
+                                <span 
+                                  className="w-3.5 h-3.5 rounded-full flex items-center justify-center text-white"
+                                  style={{ backgroundColor: activeConf.accentColor }}
+                                >
+                                  <Check size={8} strokeWidth={4} />
+                                </span>
+                              )}
+                            </div>
+                            <div className="mt-2.5">
+                              <h5 className="font-serif font-bold text-xs text-deep-navy leading-none">
+                                {activeConf.name}
+                              </h5>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })()}
           </AnimatePresence>
         </div>
       </div>

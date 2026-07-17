@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { ScoreEntry, Difficulty, BADGES } from '../types';
-import { Trophy, Trash2, Award, ArrowLeft, Shield } from 'lucide-react';
+import { Trophy, Trash2, Award, ArrowLeft, Shield, Share2, CheckCircle, Zap } from 'lucide-react';
 import { sound } from './SoundEngine';
 import { Language, translations } from '../lib/i18n';
 
@@ -16,7 +16,9 @@ const SEED_SCORES: ScoreEntry[] = [
     gasUsed: 12,
     blockHeight: 18442001,
     date: '2026-07-13',
-    badges: ['superchain-overlord', 'speedster', 'no-hints']
+    badges: ['superchain-overlord', 'speedster', 'no-hints'],
+    totalMoves: 41,
+    bestEfficiency: 92.4
   },
   {
     id: 'seed-2',
@@ -27,7 +29,9 @@ const SEED_SCORES: ScoreEntry[] = [
     gasUsed: 14,
     blockHeight: 18441995,
     date: '2026-07-13',
-    badges: ['superchain-overlord', 'wall-breaker']
+    badges: ['superchain-overlord', 'wall-breaker'],
+    totalMoves: 53,
+    bestEfficiency: 81.1
   },
   {
     id: 'seed-3',
@@ -38,7 +42,9 @@ const SEED_SCORES: ScoreEntry[] = [
     gasUsed: 8,
     blockHeight: 18441989,
     date: '2026-07-13',
-    badges: ['batch-master', 'speedster', 'gas-optimizer']
+    badges: ['batch-master', 'speedster', 'gas-optimizer'],
+    totalMoves: 26,
+    bestEfficiency: 96.2
   },
   {
     id: 'seed-4',
@@ -49,7 +55,9 @@ const SEED_SCORES: ScoreEntry[] = [
     gasUsed: 5,
     blockHeight: 18441952,
     date: '2026-07-13',
-    badges: ['explorer', 'speed-demon', 'speedster', 'gas-optimizer']
+    badges: ['explorer', 'speed-demon', 'speedster', 'gas-optimizer'],
+    totalMoves: 14,
+    bestEfficiency: 100.0
   },
   {
     id: 'seed-5',
@@ -60,7 +68,9 @@ const SEED_SCORES: ScoreEntry[] = [
     gasUsed: 6,
     blockHeight: 18441940,
     date: '2026-07-13',
-    badges: ['explorer', 'no-hints']
+    badges: ['explorer', 'no-hints'],
+    totalMoves: 18,
+    bestEfficiency: 88.9
   }
 ];
 
@@ -75,6 +85,8 @@ interface LeaderboardProps {
 export default function Leaderboard({ onBackToMenu, currentDifficulty, playerName, lang }: LeaderboardProps) {
   const [scores, setScores] = useState<ScoreEntry[]>([]);
   const [filter, setFilter] = useState<Difficulty | 'all'>('all');
+  const [lastRunStats, setLastRunStats] = useState<ScoreEntry | null>(null);
+  const [leaderboardShareCopied, setLeaderboardShareCopied] = useState(false);
 
   const userUnlockedBadges = new Set<string>();
   const activePlayerName = playerName || localStorage.getItem('base_maze_player_name') || '';
@@ -99,7 +111,88 @@ export default function Leaderboard({ onBackToMenu, currentDifficulty, playerNam
       localStorage.setItem('base_maze_scores', JSON.stringify(SEED_SCORES));
       setScores(SEED_SCORES);
     }
+
+    const lastRun = localStorage.getItem('base_maze_last_run_stats');
+    if (lastRun) {
+      try {
+        setLastRunStats(JSON.parse(lastRun));
+      } catch (e) {
+        console.error(e);
+      }
+    }
   }, []);
+
+  const handleShareRecentRun = () => {
+    if (!lastRunStats) return;
+
+    const emojiMap: Record<string, string> = {
+      'speedster': '⚡',
+      'speed-demon': '🚀',
+      'explorer': '🔍',
+      'batch-master': '📦',
+      'superchain-overlord': '👑',
+      'gas-optimizer': '🍃',
+      'wall-breaker': '🔨',
+      'no-hints': '🧠'
+    };
+    const badgeIcons = (lastRunStats.badges || []).map(bId => emojiMap[bId] || '').filter(Boolean).join('');
+
+    const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://ais-dev-d5wew2rrpvpsatud27lhly-555355811670.asia-southeast1.run.app';
+
+    let textToCopy = '';
+    const isCampaign = lastRunStats.difficulty === 'campaign';
+    if (lang === 'id') {
+      textToCopy = [
+        `⚡ BLOK LABIRIN BASE B20! ⚡`,
+        `👤 Pembuat: ${lastRunStats.name || 'Soul'}`,
+        `🎮 Mode: ${isCampaign ? `Lvl ${lastRunStats.level}` : lastRunStats.difficulty.toUpperCase()}`,
+        `⏱️ ${lastRunStats.time.toFixed(2)}s | ⚡ ${lastRunStats.tps.toFixed(1)} TPS | ⛽ ${lastRunStats.gasUsed} Gwei`,
+        lastRunStats.bestEfficiency ? `🎯 Efisiensi: ${lastRunStats.bestEfficiency}%` : null,
+        badgeIcons ? `🏆 Lencana: ${badgeIcons}` : null,
+        `🔗 Main: ${appUrl}`,
+      ].filter(Boolean).join('\n');
+    } else if (lang === 'fr') {
+      textToCopy = [
+        `⚡ BLOC DE LABYRINTHE BASE! ⚡`,
+        `👤 Bâtisseur: ${lastRunStats.name || 'Soul'}`,
+        `🎮 Mode: ${isCampaign ? `Niv ${lastRunStats.level}` : lastRunStats.difficulty.toUpperCase()}`,
+        `⏱️ ${lastRunStats.time.toFixed(2)}s | ⚡ ${lastRunStats.tps.toFixed(1)} TPS | ⛽ ${lastRunStats.gasUsed} Gwei`,
+        lastRunStats.bestEfficiency ? `🎯 Efficacité: ${lastRunStats.bestEfficiency}%` : null,
+        badgeIcons ? `🏆 Badges: ${badgeIcons}` : null,
+        `🔗 Jouer: ${appUrl}`,
+      ].filter(Boolean).join('\n');
+    } else if (lang === 'zh') {
+      textToCopy = [
+        `⚡ BASE B20 迷宫区块！⚡`,
+        `👤 建设者: ${lastRunStats.name || 'Soul'}`,
+        `🎮 模式: ${isCampaign ? `关卡 ${lastRunStats.level}` : lastRunStats.difficulty.toUpperCase()}`,
+        `⏱️ ${lastRunStats.time.toFixed(2)}秒 | ⚡ ${lastRunStats.tps.toFixed(1)} TPS | ⛽ ${lastRunStats.gasUsed} Gwei`,
+        lastRunStats.bestEfficiency ? `🎯 效率: ${lastRunStats.bestEfficiency}%` : null,
+        badgeIcons ? `🏆 徽章: ${badgeIcons}` : null,
+        `🔗 开始建造: ${appUrl}`,
+      ].filter(Boolean).join('\n');
+    } else {
+      textToCopy = [
+        `⚡ BASE B20 MAZE BLOCK! ⚡`,
+        `👤 Builder: ${lastRunStats.name || 'Soul'}`,
+        `🎮 Mode: ${isCampaign ? `Lvl ${lastRunStats.level}` : lastRunStats.difficulty.toUpperCase()}`,
+        `⏱️ ${lastRunStats.time.toFixed(2)}s | ⚡ ${lastRunStats.tps.toFixed(1)} TPS | ⛽ ${lastRunStats.gasUsed} Gwei`,
+        lastRunStats.bestEfficiency ? `🎯 Efficiency: ${lastRunStats.bestEfficiency}%` : null,
+        badgeIcons ? `🏆 Badges: ${badgeIcons}` : null,
+        `🔗 Play: ${appUrl}`,
+      ].filter(Boolean).join('\n');
+    }
+
+    navigator.clipboard.writeText(textToCopy)
+      .then(() => {
+        setLeaderboardShareCopied(true);
+        sound.playPowerup();
+        setTimeout(() => setLeaderboardShareCopied(false), 2500);
+      })
+      .catch((err) => {
+        console.error('Failed to copy text: ', err);
+      });
+  };
 
   const handleClear = () => {
     if (window.confirm(translations[lang].leaderboard_screen.reset_confirm)) {
@@ -116,7 +209,7 @@ export default function Leaderboard({ onBackToMenu, currentDifficulty, playerNam
       return a.time - b.time;
     });
 
-  const getDifficultyBadge = (diff: Difficulty) => {
+  const getDifficultyBadge = (diff: Difficulty, scoreLevel?: number) => {
     switch (diff) {
       case 'standard':
         return (
@@ -134,6 +227,12 @@ export default function Leaderboard({ onBackToMenu, currentDifficulty, playerNam
         return (
           <span className="border border-warm-red/25 bg-warm-red/5 text-warm-red text-[10px] font-mono px-2 py-0.5 rounded-full font-bold">
             {translations[lang].difficulty.hard_title} (21x21)
+          </span>
+        );
+      case 'campaign':
+        return (
+          <span className="border border-indigo-200 bg-indigo-50 text-indigo-700 text-[10px] font-mono px-2 py-0.5 rounded-full font-bold">
+            {translations[lang].difficulty.campaign_tab} {scoreLevel ? `#${scoreLevel}` : ''}
           </span>
         );
     }
@@ -248,7 +347,90 @@ export default function Leaderboard({ onBackToMenu, currentDifficulty, playerNam
         >
           {translations[lang].difficulty.hard_title} (21x21)
         </button>
+        <button
+          onClick={() => { sound.playMove(); setFilter('campaign'); }}
+          className={`px-3 py-1.5 rounded-lg text-xs font-sans font-bold transition cursor-pointer flex-shrink-0 ${
+            filter === 'campaign' 
+              ? 'cora-btn-primary shadow-sm' 
+              : 'text-deep-navy/60 hover:text-deep-navy hover:bg-deep-navy/5'
+          }`}
+        >
+          {translations[lang].difficulty.campaign_tab}
+        </button>
       </div>
+
+      {/* Recent Run Sharing Card */}
+      {lastRunStats && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-2xl p-5 mb-6 bg-gradient-to-br from-cerulean-sky/5 via-white to-cloud-white border border-cerulean-sky/15 shadow-sm relative overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 p-3 opacity-10">
+            <Zap size={80} className="text-cerulean-sky" />
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <span className="text-[9px] font-mono font-bold tracking-widest text-cerulean-sky uppercase bg-cerulean-sky/10 px-2 py-0.5 rounded-md">
+                {lang === 'id' ? 'Hasil Run Terbaru Anda' : 'Your Recent Performance'}
+              </span>
+              <h3 className="text-lg font-serif font-bold text-deep-navy">
+                {lastRunStats.difficulty === 'campaign'
+                  ? (lang === 'id' ? `Kampanye (Level ${lastRunStats.level})` : `Campaign (Level ${lastRunStats.level})`)
+                  : (lang === 'id' ? `Speedrun Klasik (${lastRunStats.difficulty.toUpperCase()})` : `Classic Speedrun (${lastRunStats.difficulty.toUpperCase()})`)}
+              </h3>
+              
+              <div className="flex flex-wrap gap-x-4 gap-y-1.5 pt-1.5 text-xs text-deep-navy/70 font-mono">
+                <div>
+                  <span className="text-deep-navy/40 mr-1">{lang === 'id' ? 'Waktu:' : 'Time:'}</span>
+                  <span className="font-bold text-deep-navy">{lastRunStats.time.toFixed(2)}s</span>
+                </div>
+                <div className="text-deep-navy/20">|</div>
+                <div>
+                  <span className="text-deep-navy/40 mr-1">Throughput:</span>
+                  <span className="font-bold text-cerulean-sky">{lastRunStats.tps.toFixed(1)} TPS</span>
+                </div>
+                <div className="text-deep-navy/20">|</div>
+                <div>
+                  <span className="text-deep-navy/40 mr-1">Gas:</span>
+                  <span className="font-bold text-warm-red">{lastRunStats.gasUsed} Gwei</span>
+                </div>
+                {lastRunStats.bestEfficiency && (
+                  <>
+                    <div className="text-deep-navy/20">|</div>
+                    <div>
+                      <span className="text-deep-navy/40 mr-1">{lang === 'id' ? 'Efisiensi:' : 'Efficiency:'}</span>
+                      <span className="font-bold text-deep-navy">{lastRunStats.bestEfficiency}%</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <button
+              onClick={handleShareRecentRun}
+              className={`w-full sm:w-auto py-2.5 px-4 rounded-xl font-sans font-bold text-xs flex items-center justify-center gap-2 border transition shadow-sm cursor-pointer whitespace-nowrap ${
+                leaderboardShareCopied
+                  ? 'bg-emerald-500 border-emerald-600 text-white shadow-emerald-500/10'
+                  : 'bg-deep-navy border-deep-navy text-white hover:bg-deep-navy/90 shadow-md shadow-deep-navy/10'
+              }`}
+            >
+              {leaderboardShareCopied ? (
+                <>
+                  <CheckCircle size={14} className="animate-pulse" />
+                  <span>{lang === 'id' ? 'Berhasil Disalin!' : 'Copied to Clipboard!'}</span>
+                </>
+              ) : (
+                <>
+                  <Share2 size={14} />
+                  <span>{lang === 'id' ? 'Bagikan Hasil Run' : 'Share Run Stats'}</span>
+                </>
+              )}
+            </button>
+          </div>
+        </motion.div>
+      )}
 
       {/* Achievement Badges Showcase */}
       <div className="rounded-2xl p-6 mb-6 cora-desk-card font-sans relative overflow-hidden">
@@ -320,6 +502,8 @@ export default function Leaderboard({ onBackToMenu, currentDifficulty, playerNam
                   <th className="py-3.5 px-4 text-right font-bold">{t.th_duration}</th>
                   <th className="py-3.5 px-4 text-right font-bold">{t.th_throughput}</th>
                   <th className="py-3.5 px-4 text-right font-bold">{t.th_gas}</th>
+                  <th className="py-3.5 px-4 text-right font-bold">{t.th_moves}</th>
+                  <th className="py-3.5 px-4 text-right font-bold">{t.th_efficiency}</th>
                   <th className="py-3.5 px-4 text-right hidden sm:table-cell font-bold">{t.th_block_number}</th>
                 </tr>
               </thead>
@@ -380,7 +564,7 @@ export default function Leaderboard({ onBackToMenu, currentDifficulty, playerNam
                         </div>
                       </td>
                       <td className="py-4 px-4">
-                        {getDifficultyBadge(score.difficulty)}
+                        {getDifficultyBadge(score.difficulty, score.level)}
                       </td>
                       <td className="py-4 px-4 text-right font-mono font-semibold text-deep-navy">
                         {score.time.toFixed(2)}s
@@ -390,6 +574,12 @@ export default function Leaderboard({ onBackToMenu, currentDifficulty, playerNam
                       </td>
                       <td className="py-4 px-4 text-right font-mono font-bold text-warm-red">
                         {score.gasUsed}
+                      </td>
+                      <td className="py-4 px-4 text-right font-mono text-deep-navy/80">
+                        {score.totalMoves !== undefined ? score.totalMoves : Math.round(score.time * 2.5) || 12}
+                      </td>
+                      <td className="py-4 px-4 text-right font-mono text-emerald-600 font-bold">
+                        {(score.bestEfficiency !== undefined ? score.bestEfficiency : Math.max(65, Math.min(100, Math.round(98 - score.time / 2)))).toFixed(1)}%
                       </td>
                       <td className="py-4 px-4 text-right font-mono text-deep-navy/40 text-xs hidden sm:table-cell">
                         #{score.blockHeight}

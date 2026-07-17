@@ -26,7 +26,7 @@ import {
   Heart,
   Sparkles
 } from 'lucide-react';
-import { Difficulty, ScoreEntry, L2Theme } from './types';
+import { Difficulty, ScoreEntry, L2Theme, CHAPTERS, getChapterForLevel } from './types';
 import Onboarding from './components/Onboarding';
 import MazeBoard from './components/MazeBoard';
 import Leaderboard from './components/Leaderboard';
@@ -62,6 +62,8 @@ export default function App() {
   const [unlockedLevel, setUnlockedLevel] = useState<number>(() => {
     return Number(localStorage.getItem('base_maze_unlocked_level') || '1');
   });
+  const [jumpLevelInput, setJumpLevelInput] = useState<string>('');
+  const [jumpError, setJumpError] = useState<string>('');
 
   const [specialTokens, setSpecialTokens] = useState<number>(() => {
     return Number(localStorage.getItem('base_maze_special_tokens') || '1');
@@ -215,6 +217,46 @@ export default function App() {
   const handleGameCompleted = (score: ScoreEntry) => {
     sound.playWin();
     setScreen('leaderboard');
+  };
+
+  const handleJumpToLevel = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const lvlNum = parseInt(jumpLevelInput.trim(), 10);
+    if (isNaN(lvlNum) || lvlNum < 1 || lvlNum > 1000) {
+      setJumpError(lang === 'id' ? 'Tingkat harus antara 1 dan 1000!' : 'Level must be between 1 and 1000!');
+      sound.playError();
+      return;
+    }
+    if (lvlNum > unlockedLevel) {
+      setJumpError(
+        lang === 'id' 
+          ? `Tingkat ${lvlNum} terkunci! Selesaikan tingkat sebelumnya dahulu.` 
+          : `Level ${lvlNum} is locked! Unlock previous blocks first.`
+      );
+      sound.playError();
+      return;
+    }
+    setJumpError('');
+    setCampaignLevel(lvlNum);
+    sound.playMove();
+  };
+
+  const handleContinueJourney = () => {
+    const inputEl = document.getElementById('builder-name-input');
+    if (!playerName) {
+      if (inputEl) {
+        inputEl.focus();
+        inputEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        inputEl.classList.add('border-warm-red', 'ring-2', 'ring-warm-red/30');
+        setTimeout(() => {
+          inputEl.classList.remove('border-warm-red', 'ring-2', 'ring-warm-red/30');
+        }, 1500);
+      }
+      sound.playError();
+      return;
+    }
+    sound.playPowerup();
+    setScreen('playing');
   };
 
   return (
@@ -737,64 +779,165 @@ export default function App() {
                   </div>
 
                   {gameMode === 'campaign' ? (
-                    <div>
+                    <div className="space-y-6">
                       {/* Campaign summary */}
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[11px] font-mono font-bold uppercase tracking-wide flex items-center gap-1 text-deep-navy/70">
-                          {translations[lang].difficulty.campaign_progress}: <span className="text-cerulean-sky">{unlockedLevel} / 50</span>
-                        </span>
-                        <span className="text-[11px] font-mono text-cerulean-sky font-bold">
-                          {Math.round((unlockedLevel / 50) * 100)}%
-                        </span>
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[11px] font-mono font-bold uppercase tracking-wide flex items-center gap-1 text-deep-navy/70">
+                            {translations[lang].difficulty.campaign_progress}: <span className="text-cerulean-sky font-bold">{unlockedLevel} / 1000</span>
+                          </span>
+                          <span className="text-[11px] font-mono text-cerulean-sky font-bold">
+                            {Math.round((unlockedLevel / 1000) * 100)}%
+                          </span>
+                        </div>
+
+                        {/* Progress bar */}
+                        <div className="w-full h-2 bg-cloud-white rounded-full overflow-hidden mb-3 border border-deep-navy/5">
+                          <div
+                            className="h-full bg-gradient-to-r from-deep-navy to-cerulean-sky rounded-full transition-all duration-500"
+                            style={{ width: `${(unlockedLevel / 1000) * 100}%` }}
+                          />
+                        </div>
                       </div>
 
-                      {/* Progress bar */}
-                      <div className="w-full h-1.5 bg-cloud-white rounded-full overflow-hidden mb-4 border border-deep-navy/5">
-                        <div
-                          className="h-full bg-gradient-to-r from-deep-navy to-cerulean-sky rounded-full transition-all duration-500"
-                          style={{ width: `${(unlockedLevel / 50) * 100}%` }}
-                        ></div>
-                      </div>
+                      {/* CHAPTER INFO CARD */}
+                      {(() => {
+                        const selectedChapter = getChapterForLevel(campaignLevel);
+                        const chapterTotal = selectedChapter.endLevel - selectedChapter.startLevel + 1;
+                        const chapterCompletedCount = Math.max(0, Math.min(selectedChapter.endLevel, unlockedLevel) - selectedChapter.startLevel + 1);
+                        const chapterProgressPercent = Math.round((chapterCompletedCount / chapterTotal) * 100);
 
-                      <p className="text-[11px] mb-4 leading-relaxed text-deep-navy/70">
-                        {translations[lang].difficulty.campaign_desc}
-                      </p>
+                        return (
+                          <div className="p-4 rounded-xl border border-deep-navy/10 bg-[#f8fafc] text-left">
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="text-[10px] font-mono font-bold text-deep-navy/50 uppercase tracking-widest">
+                                Chapter {selectedChapter.id} of 8
+                              </span>
+                              <span className="text-xs font-mono font-extrabold text-cerulean-sky">
+                                {chapterProgressPercent}% Completed
+                              </span>
+                            </div>
+                            <h4 className="text-base font-serif font-extrabold text-deep-navy mb-1.5 flex items-center gap-2">
+                              {selectedChapter.name}
+                              <span className="text-xs font-mono font-semibold text-deep-navy/40">
+                                ({selectedChapter.startLevel} – {selectedChapter.endLevel})
+                              </span>
+                            </h4>
+                            <p className="text-xs text-deep-navy/75 leading-relaxed mb-3">
+                              {selectedChapter.desc}
+                            </p>
+                            
+                            {/* Chapter progress bar */}
+                            <div className="w-full h-1.5 bg-[#e2e8f0] rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-[#0052FF] rounded-full transition-all duration-300"
+                                style={{ width: `${chapterProgressPercent}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })()}
 
-                      {/* 1 - 50 Level Grid */}
-                      <div className="grid grid-cols-5 sm:grid-cols-10 gap-2 max-h-52 overflow-y-auto pr-1">
-                        {Array.from({ length: 50 }).map((_, i) => {
-                          const lvl = i + 1;
-                          const isUnlocked = lvl <= unlockedLevel;
-                          const isSelected = lvl === campaignLevel;
-                          return (
-                            <button
-                              key={lvl}
-                              type="button"
-                              disabled={!isUnlocked}
-                              onClick={() => {
-                                sound.playMove();
-                                setCampaignLevel(lvl);
+                      {/* SELECTED LEVEL CONTROLS */}
+                      <div className="flex flex-col items-center justify-center p-4 border border-deep-navy/10 rounded-xl bg-white shadow-sm">
+                        <div className="flex items-center gap-1 text-[10px] font-mono text-deep-navy/50 uppercase tracking-widest font-bold mb-1">
+                          Current Selected Level
+                        </div>
+                        <div className="flex items-baseline gap-2 mb-4">
+                          <span className="text-3xl font-serif font-black text-deep-navy">
+                            Level {campaignLevel}
+                          </span>
+                          <span className="text-xs font-mono font-extrabold">
+                            {campaignLevel < unlockedLevel ? (
+                              <span className="text-emerald-600">✓ COMPLETED</span>
+                            ) : campaignLevel === unlockedLevel ? (
+                              <span className="text-[#0052FF]">🟢 ACTIVE</span>
+                            ) : (
+                              <span className="text-slate-400">🔒 LOCKED</span>
+                            )}
+                          </span>
+                        </div>
+
+                        {/* Navigation: Previous / Next Level */}
+                        <div className="flex items-center gap-3 w-full max-w-sm mb-4">
+                          <button
+                            type="button"
+                            disabled={campaignLevel <= 1}
+                            onClick={() => {
+                              sound.playMove();
+                              setCampaignLevel(prev => prev - 1);
+                            }}
+                            className={`flex-1 py-2.5 rounded-xl text-xs font-sans font-bold border transition-all flex items-center justify-center gap-1 select-none cursor-pointer ${
+                              campaignLevel <= 1
+                                ? 'bg-cloud-white border-deep-navy/5 text-deep-navy/20 cursor-not-allowed'
+                                : 'bg-white border-deep-navy/10 text-deep-navy hover:bg-cloud-white hover:border-deep-navy/30'
+                            }`}
+                          >
+                            ← Prev Level
+                          </button>
+                          <button
+                            type="button"
+                            disabled={campaignLevel >= unlockedLevel || campaignLevel >= 1000}
+                            onClick={() => {
+                              sound.playMove();
+                              setCampaignLevel(prev => prev + 1);
+                            }}
+                            className={`flex-1 py-2.5 rounded-xl text-xs font-sans font-bold border transition-all flex items-center justify-center gap-1 select-none cursor-pointer ${
+                              campaignLevel >= unlockedLevel || campaignLevel >= 1000
+                                ? 'bg-cloud-white border-deep-navy/5 text-deep-navy/20 cursor-not-allowed'
+                                : 'bg-white border-deep-navy/10 text-deep-navy hover:bg-cloud-white hover:border-deep-navy/30'
+                            }`}
+                          >
+                            Next Level →
+                          </button>
+                        </div>
+
+                        {/* Jump to Level Input Form */}
+                        <div 
+                          className="w-full max-w-sm border-t border-deep-navy/5 pt-4 flex flex-col items-stretch"
+                        >
+                          <div className="flex gap-2">
+                            <input
+                              type="number"
+                              min={1}
+                              max={1000}
+                              value={jumpLevelInput}
+                              onChange={(e) => {
+                                setJumpLevelInput(e.target.value);
+                                if (jumpError) setJumpError('');
                               }}
-                              className={`relative py-2 rounded-lg text-center text-xs font-mono font-bold border transition-all flex flex-col items-center justify-center cursor-pointer ${
-                                isSelected
-                                  ? 'bg-deep-navy border-deep-navy text-white shadow-sm scale-105 z-10'
-                                  : isUnlocked
-                                    ? 'bg-white border-deep-navy/10 text-deep-navy hover:border-cerulean-sky hover:bg-cloud-white'
-                                    : 'bg-cloud-white/40 border-deep-navy/5 text-deep-navy/20 cursor-not-allowed'
-                              }`}
+                              placeholder="Jump to level (e.g. 450)"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  handleJumpToLevel();
+                                }
+                              }}
+                              className="flex-grow border border-slate-200 focus:border-[#0052FF] focus:ring-1 focus:ring-[#0052FF]/30 rounded-xl px-3.5 py-2 text-xs outline-none transition-all font-mono bg-slate-50 text-deep-navy placeholder-slate-400"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleJumpToLevel()}
+                              className="px-4 py-2 text-xs font-sans font-bold text-white bg-[#0052FF] hover:bg-[#0052FF]/95 rounded-xl shadow-sm hover:shadow transition cursor-pointer select-none border border-[#0052FF]/10 flex items-center justify-center"
                             >
-                              {isUnlocked ? (
-                                <span>{lvl}</span>
-                              ) : (
-                                <span className="text-[10px]">🔒</span>
-                              )}
-                              {isUnlocked && lvl < unlockedLevel && (
-                                <span className="absolute bottom-0.5 right-1 text-[7px] text-warm-red font-bold">✓</span>
-                              )}
+                              Go
                             </button>
-                          );
-                        })}
+                          </div>
+                          {jumpError && (
+                            <p className="text-[10px] text-red-500 mt-2 font-mono text-left font-bold animate-pulse">
+                              • {jumpError}
+                            </p>
+                          )}
+                        </div>
                       </div>
+
+                      {/* CONTINUE JOURNEY GIANT BUTTON */}
+                      <button
+                        type="button"
+                        onClick={handleContinueJourney}
+                        className="w-full font-sans font-black text-sm py-4 px-6 rounded-2xl flex items-center justify-center gap-2 text-white bg-gradient-to-r from-deep-navy to-[#0052FF] hover:opacity-95 active:scale-[0.99] shadow-[0_8px_30px_rgba(0,82,255,0.2)] hover:shadow-[0_12px_40px_rgba(0,82,255,0.3)] transition-all duration-300 group cursor-pointer border border-[#0052FF]/10 select-none uppercase tracking-wide"
+                      >
+                        🚀 {lang === 'id' ? 'Lanjutkan Perjalanan' : 'Continue Journey'}
+                      </button>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 animate-fade-in">

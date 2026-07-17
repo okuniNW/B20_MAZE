@@ -12,7 +12,7 @@ interface OnboardingProps {
 }
 
 export default function Onboarding({ onStart, lang, theme = 'light', specialTokens }: OnboardingProps) {
-  const [name, setName] = useState('');
+  const [name, setName] = useState(() => localStorage.getItem('base_maze_player_name') || '');
   const [error, setError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
