@@ -104,6 +104,8 @@ export interface TranslationDictionary {
     earned_badges: string;
     special_tokens_label: string;
     insufficient_tokens: string;
+    reveal_map_btn: string;
+    reveal_map_tooltip: string;
   };
   badges: Record<string, { name: string; description: string }>;
 }
@@ -220,6 +222,8 @@ export const translations: Record<Language, TranslationDictionary> = {
       earned_badges: "Achievements Earned",
       special_tokens_label: "Special Keys",
       insufficient_tokens: "You need 1 Special Key to use this!",
+      reveal_map_btn: "Radar Scan",
+      reveal_map_tooltip: "Unlock full map view using a Special Key",
     },
     badges: {
       'speedster': { name: "Speedster", description: "Complete in < 15 seconds" },
@@ -343,6 +347,8 @@ export const translations: Record<Language, TranslationDictionary> = {
       earned_badges: "Pencapaian Diperoleh",
       special_tokens_label: "Token Khusus",
       insufficient_tokens: "Butuh 1 Token Khusus untuk menggunakan ini!",
+      reveal_map_btn: "Radar Peta",
+      reveal_map_tooltip: "Buka tampilan peta penuh menggunakan Kunci Khusus",
     },
     badges: {
       'speedster': { name: "Speedster", description: "Selesai dalam < 15 detik" },
@@ -466,6 +472,8 @@ export const translations: Record<Language, TranslationDictionary> = {
       earned_badges: "获得成就",
       special_tokens_label: "特殊钥匙",
       insufficient_tokens: "您需要 1 把特殊钥匙来使用此功能！",
+      reveal_map_btn: "雷达扫描",
+      reveal_map_tooltip: "使用一把特殊钥匙解锁完整地图视图",
     },
     badges: {
       'speedster': { name: "极速者", description: "15秒内通关" },
@@ -589,6 +597,8 @@ export const translations: Record<Language, TranslationDictionary> = {
       earned_badges: "Badges Obtenus",
       special_tokens_label: "Clés Spéciales",
       insufficient_tokens: "Il vous faut 1 Clé Spéciale pour utiliser ceci !",
+      reveal_map_btn: "Radar Scan",
+      reveal_map_tooltip: "Débloquez la vue complète de la carte avec une Clé Spéciale",
     },
     badges: {
       'speedster': { name: "Bolide", description: "Terminer en < 15 secondes" },

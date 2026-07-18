@@ -31,7 +31,8 @@ import {
   Sparkles,
   Info,
   Key,
-  Lock
+  Lock,
+  Compass
 } from 'lucide-react';
 import { Language, translations } from '../lib/i18n';
 
@@ -80,12 +81,12 @@ export default function MazeBoard({
   // Determine grid size based on difficulty
   const getGridConfig = (diff: Difficulty, isCamp?: boolean, campLvl?: number) => {
     if (isCamp && campLvl) {
-      // Linear scaling from level 1 (5x5) to level 1000 (21x21)
-      const levelCols = Math.min(21, 5 + Math.floor(((campLvl - 1) / 999) * 16));
+      // Linear scaling from level 1 (5x5) to level 1000 (51x51) for epic progression
+      const levelCols = Math.min(51, 5 + Math.floor(((campLvl - 1) / 999) * 46));
       const levelRows = levelCols;
       const totalCells = levelCols * levelRows;
-      const gasCount = Math.max(1, Math.min(15, Math.floor(totalCells * 0.04)));
-      const valCount = Math.max(1, Math.min(6, Math.floor(totalCells * 0.02)));
+      const gasCount = Math.max(1, Math.min(30, Math.floor(totalCells * 0.04)));
+      const valCount = Math.max(1, Math.min(10, Math.floor(totalCells * 0.02)));
       const hasPortal = campLvl >= 10; // Portals unlocked starting from level 10
       return { cols: levelCols, rows: levelRows, gasCount, valCount, hasPortal };
     }
@@ -94,9 +95,9 @@ export default function MazeBoard({
       case 'standard':
         return { cols: 10, rows: 10, gasCount: 4, valCount: 2, hasPortal: false };
       case 'batch':
-        return { cols: 15, rows: 15, gasCount: 7, valCount: 3, hasPortal: true };
-      case 'superchain':
         return { cols: 21, rows: 21, gasCount: 12, valCount: 4, hasPortal: true };
+      case 'superchain':
+        return { cols: 50, rows: 50, gasCount: 30, valCount: 10, hasPortal: true };
       default:
         return { cols: 10, rows: 10, gasCount: 4, valCount: 2, hasPortal: false };
     }
@@ -118,6 +119,7 @@ export default function MazeBoard({
   });
   const [isReady, setIsReady] = useState(false);
   const [showHint, setShowHint] = useState(false);
+  const [fullMapRevealed, setFullMapRevealed] = useState(false);
   const [hasWon, setHasWon] = useState(false);
   const [floatingFeedbacks, setFloatingFeedbacks] = useState<{ id: number; text: string; type: string }[]>([]);
   
@@ -251,6 +253,7 @@ export default function MazeBoard({
     sound.playReset();
     setAutoSolving(false);
     setShowHint(false);
+    setFullMapRevealed(false);
     setHintUnlocked(false);
     setHasWon(false);
     setHasUsedBypass(false);
@@ -278,6 +281,7 @@ export default function MazeBoard({
             if (savedState.hasEnabledHints !== undefined) setHasEnabledHints(savedState.hasEnabledHints);
             if (savedState.showHint !== undefined) setShowHint(savedState.showHint);
             if (savedState.hintUnlocked !== undefined) setHintUnlocked(savedState.hintUnlocked);
+            if (savedState.fullMapRevealed !== undefined) setFullMapRevealed(savedState.fullMapRevealed);
             
             setIsReady(true);
             calculateShortestPath(savedState.grid, savedState.player.x, savedState.player.y);
@@ -308,6 +312,7 @@ export default function MazeBoard({
             if (savedState.hasEnabledHints !== undefined) setHasEnabledHints(savedState.hasEnabledHints);
             if (savedState.showHint !== undefined) setShowHint(savedState.showHint);
             if (savedState.hintUnlocked !== undefined) setHintUnlocked(savedState.hintUnlocked);
+            if (savedState.fullMapRevealed !== undefined) setFullMapRevealed(savedState.fullMapRevealed);
             
             setIsReady(true);
             calculateShortestPath(savedState.grid, savedState.player.x, savedState.player.y);
@@ -643,7 +648,8 @@ export default function MazeBoard({
           hasUsedBypass,
           hasEnabledHints,
           showHint,
-          hintUnlocked
+          hintUnlocked,
+          fullMapRevealed
         };
         localStorage.setItem('base_maze_campaign_resume_state', JSON.stringify(stateToSave));
       } else {
@@ -656,7 +662,8 @@ export default function MazeBoard({
           hasUsedBypass,
           hasEnabledHints,
           showHint,
-          hintUnlocked
+          hintUnlocked,
+          fullMapRevealed
         };
         localStorage.setItem('base_maze_classic_resume_state', JSON.stringify(stateToSave));
       }
@@ -675,7 +682,8 @@ export default function MazeBoard({
     hasUsedBypass,
     hasEnabledHints,
     showHint,
-    hintUnlocked
+    hintUnlocked,
+    fullMapRevealed
   ]);
 
   // Track if hints are enabled during this maze run
@@ -1107,6 +1115,19 @@ export default function MazeBoard({
     }
   };
 
+  const handleRevealMapClick = () => {
+    if (fullMapRevealed || autoSolving || hasWon) return;
+    if (specialTokens >= 1) {
+      setSpecialTokens(prev => prev - 1);
+      setFullMapRevealed(true);
+      sound.playPowerup();
+      triggerFeedback(lang === 'id' ? 'Radar Aktif!' : 'Radar Active!', 'info');
+    } else {
+      sound.playError();
+      setToastMessage(translations[lang].mazeboard.insufficient_tokens);
+    }
+  };
+
   const handleRegenClick = () => {
     if (isCampaign) {
       // In campaign, let them reset/restart the level for free!
@@ -1201,6 +1222,27 @@ export default function MazeBoard({
               </span>
             </button>
 
+            {/* Radar Scan (Reveal Map) Button */}
+            <button
+              type="button"
+              onClick={handleRevealMapClick}
+              disabled={fullMapRevealed || autoSolving || hasWon}
+              className={`p-2 border rounded-xl text-xs font-sans font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-sm ${
+                fullMapRevealed
+                  ? 'bg-emerald-500/15 border-emerald-500 text-emerald-600 cursor-not-allowed opacity-80'
+                  : 'bg-white border-deep-navy/10 text-deep-navy/70 hover:border-cerulean-sky hover:text-cerulean-sky hover:bg-cloud-white'
+              }`}
+              title={translations[lang].mazeboard.reveal_map_tooltip}
+            >
+              <Compass size={14} className={fullMapRevealed ? 'text-emerald-500' : 'text-cerulean-sky'} />
+              <span className="hidden sm:inline">{translations[lang].mazeboard.reveal_map_btn}</span>
+              {!fullMapRevealed && (
+                <span className="text-[9px] font-mono font-bold bg-warm-red/10 text-warm-red px-1 py-0.5 rounded border border-warm-red/20">
+                  1 🔑
+                </span>
+              )}
+            </button>
+
             {/* Regenerate Button */}
             <button
               type="button"
@@ -1245,23 +1287,35 @@ export default function MazeBoard({
             <div className="w-full h-full flex items-center justify-center font-mono text-deep-navy/40">
               {translations[lang].mazeboard.generating_grid}
             </div>
-          ) : (
-            <div
-              className="grid w-full h-full gap-0 select-none relative"
-              style={{
-                gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-                gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`
-              }}
-            >
-              {grid.map((row, y) =>
-                row.map((cell, x) => {
-                  const isStart = x === 0 && y === 0;
-                  const isExit = x === cols - 1 && y === rows - 1;
-                  const isPlayer = player.x === x && player.y === y;
-                  const activeTheme = L2_THEMES[l2Theme] || L2_THEMES['base-blue'];
+          ) : (() => {
+            const isViewportActive = !fullMapRevealed;
+            const viewportSize = isViewportActive ? Math.min(4, cols) : cols;
+            const startX = isViewportActive ? Math.max(0, Math.min(cols - viewportSize, player.x - 1)) : 0;
+            const startY = isViewportActive ? Math.max(0, Math.min(rows - viewportSize, player.y - 1)) : 0;
 
-                  // Is this cell on the optimized hint path?
-                  const isOnHint = showHint && shortestPath.some(([px, py]) => px === x && py === y);
+            const slicedGrid = isViewportActive
+              ? grid.slice(startY, startY + viewportSize).map(row => row.slice(startX, startX + viewportSize))
+              : grid;
+
+            return (
+              <div
+                className="grid w-full h-full gap-0 select-none relative"
+                style={{
+                  gridTemplateColumns: `repeat(${viewportSize}, minmax(0, 1fr))`,
+                  gridTemplateRows: `repeat(${viewportSize}, minmax(0, 1fr))`
+                }}
+              >
+                {slicedGrid.map((row) =>
+                  row.map((cell) => {
+                    const x = cell.x;
+                    const y = cell.y;
+                    const isStart = x === 0 && y === 0;
+                    const isExit = x === cols - 1 && y === rows - 1;
+                    const isPlayer = player.x === x && player.y === y;
+                    const activeTheme = L2_THEMES[l2Theme] || L2_THEMES['base-blue'];
+
+                    // Is this cell on the optimized hint path?
+                    const isOnHint = showHint && shortestPath.some(([px, py]) => px === x && py === y);
 
                   return (
                     <div
@@ -1351,7 +1405,8 @@ export default function MazeBoard({
                 })
               )}
             </div>
-          )}
+          );
+        })()}
 
           {/* Scanner Overlay during Auto-solve */}
           {autoSolving && (

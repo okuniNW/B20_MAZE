@@ -973,7 +973,7 @@ export default function App() {
                       >
                         <div className="flex items-center justify-between">
                           <span className="font-serif font-bold text-sm text-deep-navy">{translations[lang].difficulty.medium_title}</span>
-                          <span className="text-[10px] font-mono text-warm-red font-bold">15 x 15</span>
+                          <span className="text-[10px] font-mono text-warm-red font-bold">21 x 21</span>
                         </div>
                         <p className="text-[11px] mt-1.5 leading-relaxed text-deep-navy/70">
                           {translations[lang].difficulty.medium_desc}
@@ -992,7 +992,7 @@ export default function App() {
                       >
                         <div className="flex items-center justify-between">
                           <span className="font-serif font-bold text-sm text-deep-navy">{translations[lang].difficulty.hard_title}</span>
-                          <span className="text-[10px] font-mono font-bold text-deep-navy">21 x 21</span>
+                          <span className="text-[10px] font-mono font-bold text-deep-navy">50 x 50</span>
                         </div>
                         <p className="text-[11px] mt-1.5 leading-relaxed text-deep-navy/70">
                           {translations[lang].difficulty.hard_desc}
