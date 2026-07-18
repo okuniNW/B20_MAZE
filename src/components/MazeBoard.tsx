@@ -132,7 +132,10 @@ export default function MazeBoard({
   };
 
   const [blockHeight, setBlockHeight] = useState(18442000);
+  const [mazeId, setMazeId] = useState(0);
   const [autoSolving, setAutoSolving] = useState(false);
+  const [isTeleporting, setIsTeleporting] = useState(false);
+  const [activePortalPos, setActivePortalPos] = useState<{ x: number, y: number } | null>(null);
 
   const [hintUnlocked, setHintUnlocked] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -263,6 +266,7 @@ export default function MazeBoard({
     setTokensCollectedThisRun(false);
     setHadPenaltyThisRun(false);
     setScreenShake(false);
+    setMazeId(prev => prev + 1);
 
     // Check if there's a saved state to resume from
     if (isCampaign && !forceFresh) {
@@ -711,7 +715,7 @@ export default function MazeBoard({
 
   // Handle Movement Core Logic
   const movePlayer = (dx: number, dy: number) => {
-    if (hasWon || autoSolving || grid.length === 0) return;
+    if (hasWon || autoSolving || isTeleporting || grid.length === 0) return;
 
     const currentCell = grid[player.y][player.x];
     let canMove = false;
@@ -796,42 +800,77 @@ export default function MazeBoard({
       }
 
       // Check Portal Teleportation
-      let finalX = nextX;
-      let finalY = nextY;
       if (nextCell.isPortal && nextCell.portalTarget) {
-        finalX = nextCell.portalTarget.x;
-        finalY = nextCell.portalTarget.y;
-        sound.playWin(); // Teleport sound
-        triggerFeedback('Portal Activated!', 'portal');
-      }
+        const targetX = nextCell.portalTarget.x;
+        const targetY = nextCell.portalTarget.y;
 
-      setPlayer({ x: finalX, y: finalY });
-      setStats(prev => {
-        const nextGasCost = Math.max(0.0005, prev.gasCost - (collectedGas * 0.0015));
-        let nextValidatorTokens = prev.validatorTokens + collectedVal;
-        let nextIsNoclipped = prev.isNoclipped;
+        // Move to portal entrance first
+        setPlayer({ x: nextX, y: nextY });
+        setIsTeleporting(true);
+        setActivePortalPos({ x: nextX, y: nextY });
+        sound.playMove();
+        triggerFeedback('Charging Wormhole...', 'portal');
 
-        if (autoUsedNoclip) {
-          if (nextIsNoclipped) {
-            nextIsNoclipped = false;
+        setStats(prev => {
+          const nextGasCost = Math.max(0.0005, prev.gasCost - (collectedGas * 0.0015));
+          let nextValidatorTokens = prev.validatorTokens + collectedVal;
+          let nextIsNoclipped = prev.isNoclipped;
+
+          if (autoUsedNoclip) {
+            if (nextIsNoclipped) {
+              nextIsNoclipped = false;
+            }
           }
-        }
 
-        return {
-          ...prev,
-          transactionsMade: prev.transactionsMade + 1,
-          validatorTokens: nextValidatorTokens,
-          isNoclipped: nextIsNoclipped,
-          gasCost: nextGasCost
-        };
-      });
+          return {
+            ...prev,
+            transactionsMade: prev.transactionsMade + 1,
+            validatorTokens: nextValidatorTokens,
+            isNoclipped: nextIsNoclipped,
+            gasCost: nextGasCost
+          };
+        });
 
-      // Check Win Condition
-      if (finalX === cols - 1 && finalY === rows - 1) {
-        triggerWin();
+        calculateShortestPath(updatedGrid, nextX, nextY);
+
+        // Delayed actual teleportation
+        setTimeout(() => {
+          setPlayer({ x: targetX, y: targetY });
+          sound.playWin(); // Teleport sound
+          triggerFeedback('Portal Traversed!', 'portal');
+          calculateShortestPath(updatedGrid, targetX, targetY);
+          setIsTeleporting(false);
+          setActivePortalPos(null);
+        }, 900); // 900ms elegant pause for Time Machine effect
       } else {
-        // Recalculate hint route from new position
-        calculateShortestPath(updatedGrid, finalX, finalY);
+        setPlayer({ x: nextX, y: nextY });
+        setStats(prev => {
+          const nextGasCost = Math.max(0.0005, prev.gasCost - (collectedGas * 0.0015));
+          let nextValidatorTokens = prev.validatorTokens + collectedVal;
+          let nextIsNoclipped = prev.isNoclipped;
+
+          if (autoUsedNoclip) {
+            if (nextIsNoclipped) {
+              nextIsNoclipped = false;
+            }
+          }
+
+          return {
+            ...prev,
+            transactionsMade: prev.transactionsMade + 1,
+            validatorTokens: nextValidatorTokens,
+            isNoclipped: nextIsNoclipped,
+            gasCost: nextGasCost
+          };
+        });
+
+        // Check Win Condition
+        if (nextX === cols - 1 && nextY === rows - 1) {
+          triggerWin();
+        } else {
+          // Recalculate hint route from new position
+          calculateShortestPath(updatedGrid, nextX, nextY);
+        }
       }
     } else {
       sound.playError();
@@ -988,7 +1027,7 @@ export default function MazeBoard({
   // Keyboard Event Hook
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (hasWon || autoSolving) return;
+      if (hasWon || autoSolving || isTeleporting) return;
 
       const keys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyS', 'KeyA', 'KeyD', 'Space'];
       if (keys.includes(e.code) || keys.includes(e.key)) {
@@ -1149,21 +1188,21 @@ export default function MazeBoard({
 
   // Helper styles for cell walls
   const getCellClassName = (cell: Cell) => {
-    let classes = "relative aspect-square transition-all duration-150 border-cloud-white/20 ";
+    let classes = "relative aspect-square border-cloud-white/20 ";
     const activeTheme = L2_THEMES[l2Theme] || L2_THEMES['base-blue'];
 
     // Crisp solid L2-themed walls for maximum structural clarity
     if (cell.walls.top) classes += `border-t-[3px] ${activeTheme.wallBorderTop} `;
-    else classes += "border-t border-t-cerulean-sky/10 ";
+    else classes += "border-t border-t-cerulean-sky/10 transition-colors duration-200 ";
 
     if (cell.walls.right) classes += `border-r-[3px] ${activeTheme.wallBorderRight} `;
-    else classes += "border-r border-r-cerulean-sky/10 ";
+    else classes += "border-r border-r-cerulean-sky/10 transition-colors duration-200 ";
 
     if (cell.walls.bottom) classes += `border-b-[3px] ${activeTheme.wallBorderBottom} `;
-    else classes += "border-b border-b-cerulean-sky/10 ";
+    else classes += "border-b border-b-cerulean-sky/10 transition-colors duration-200 ";
 
     if (cell.walls.left) classes += `border-l-[3px] ${activeTheme.wallBorderLeft} `;
-    else classes += "border-l border-l-cerulean-sky/10 ";
+    else classes += "border-l border-l-cerulean-sky/10 transition-colors duration-200 ";
 
     return classes;
   };
@@ -1290,104 +1329,193 @@ export default function MazeBoard({
           ) : (() => {
             const isViewportActive = !fullMapRevealed;
             const viewportSize = isViewportActive ? Math.min(4, cols) : cols;
-            const startX = isViewportActive ? Math.max(0, Math.min(cols - viewportSize, player.x - 1)) : 0;
-            const startY = isViewportActive ? Math.max(0, Math.min(rows - viewportSize, player.y - 1)) : 0;
+            
+            // Ideal camera look-at coordinate is to center the player
+            const cameraX = isViewportActive ? player.x - (viewportSize - 1) / 2 : 0;
+            const cameraY = isViewportActive ? player.y - (viewportSize - 1) / 2 : 0;
 
-            const slicedGrid = isViewportActive
-              ? grid.slice(startY, startY + viewportSize).map(row => row.slice(startX, startX + viewportSize))
-              : grid;
+            // Clamp camera viewport coordinate within 0 and (cols - viewportSize) so it stays bound to grid
+            const clampedCameraX = isViewportActive ? Math.max(0, Math.min(cols - viewportSize, cameraX)) : 0;
+            const clampedCameraY = isViewportActive ? Math.max(0, Math.min(rows - viewportSize, cameraY)) : 0;
 
             return (
-              <div
-                className="grid w-full h-full gap-0 select-none relative"
-                style={{
-                  gridTemplateColumns: `repeat(${viewportSize}, minmax(0, 1fr))`,
-                  gridTemplateRows: `repeat(${viewportSize}, minmax(0, 1fr))`
-                }}
-              >
-                {slicedGrid.map((row) =>
-                  row.map((cell) => {
-                    const x = cell.x;
-                    const y = cell.y;
-                    const isStart = x === 0 && y === 0;
-                    const isExit = x === cols - 1 && y === rows - 1;
-                    const isPlayer = player.x === x && player.y === y;
+              <div className="w-full h-full overflow-hidden relative select-none">
+                <motion.div
+                  key={mazeId}
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{
+                    opacity: 1,
+                    scale: 1,
+                    x: `${-clampedCameraX * (100 / cols)}%`,
+                    y: `${-clampedCameraY * (100 / rows)}%`,
+                    width: `${(cols / viewportSize) * 100}%`,
+                    height: `${(rows / viewportSize) * 100}%`
+                  }}
+                  transition={{
+                    opacity: { duration: 0.35, ease: "easeOut" },
+                    scale: { duration: 0.35, ease: "easeOut" },
+                    x: { type: "spring", stiffness: 160, damping: 24, mass: 0.85 },
+                    y: { type: "spring", stiffness: 160, damping: 24, mass: 0.85 },
+                    width: { type: "spring", stiffness: 160, damping: 24, mass: 0.85 },
+                    height: { type: "spring", stiffness: 160, damping: 24, mass: 0.85 }
+                  }}
+                  className="grid gap-0 relative"
+                  style={{
+                    gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+                    gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`
+                  }}
+                >
+                  {grid.map((row) =>
+                    row.map((cell) => {
+                      const x = cell.x;
+                      const y = cell.y;
+                      const isStart = x === 0 && y === 0;
+                      const isExit = x === cols - 1 && y === rows - 1;
+                      const isPlayer = player.x === x && player.y === y;
+                      const activeTheme = L2_THEMES[l2Theme] || L2_THEMES['base-blue'];
+
+                      // Is this cell on the optimized hint path?
+                      const isOnHint = showHint && shortestPath.some(([px, py]) => px === x && py === y);
+
+                      return (
+                        <div
+                          key={`${x}-${y}`}
+                          id={`cell-${x}-${y}`}
+                          className={getCellClassName(cell)}
+                        >
+                          {/* Background fill if starting / exit / hint path */}
+                          {isStart && (
+                            <div className="absolute inset-0 flex items-center justify-center font-mono text-[9px] font-bold z-0 bg-cerulean-sky/10 text-cerulean-sky">
+                              {translations[lang].mazeboard.wallet_label}
+                            </div>
+                          )}
+                          {isExit && (
+                            <div className="absolute inset-0 flex items-center justify-center font-mono text-[9px] font-bold z-0 bg-warm-red/10 text-warm-red">
+                              {translations[lang].mazeboard.block_label}
+                            </div>
+                          )}
+
+                          {/* Gas-Optimized Route Hint Line - beautifully stylized! */}
+                          {isOnHint && !isPlayer && !isStart && !isExit && (
+                            <div className="absolute inset-2 rounded-full animate-pulse z-0 border bg-warm-red/10 border-warm-red/35 shadow-sm shadow-warm-red/10"></div>
+                          )}
+
+                          {/* Render Portal Bridge */}
+                          {cell.isPortal && (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              {/* Ambient outer ring */}
+                              <div className="absolute inset-[10%] rounded-full bg-cerulean-sky/15 border border-cerulean-sky/35 flex items-center justify-center animate-pulse z-0" />
+                              
+                              {/* Spinning portal center */}
+                              <motion.div
+                                animate={{ rotate: 360 }}
+                                transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
+                                className="absolute inset-[25%] rounded-full border border-dashed border-cerulean-sky/60 flex items-center justify-center bg-cerulean-sky/10 z-0"
+                              >
+                                <Zap size={cols > 25 ? 6 : 10} className="text-cerulean-sky" />
+                              </motion.div>
+
+                              {/* Time Machine charging effect overlay when active */}
+                              {isTeleporting && activePortalPos && activePortalPos.x === x && activePortalPos.y === y && (
+                                <motion.div
+                                  initial={{ scale: 0, opacity: 0 }}
+                                  animate={{ scale: [1, 1.4, 1.2], opacity: [0.8, 1, 0.9] }}
+                                  transition={{ duration: 0.9, ease: "easeInOut" }}
+                                  className="absolute inset-0 rounded-full border-2 border-amber-400 bg-amber-400/20 shadow-[0_0_15px_rgba(251,191,36,0.6)] z-10 flex items-center justify-center animate-pulse"
+                                >
+                                  <motion.div
+                                    animate={{ rotate: -360 }}
+                                    transition={{ repeat: Infinity, duration: 0.5, ease: "linear" }}
+                                    className="w-[85%] h-[85%] rounded-full border border-dashed border-amber-500 flex items-center justify-center"
+                                  >
+                                    <Zap size={cols > 25 ? 8 : 12} className="text-amber-400 animate-pulse" />
+                                  </motion.div>
+                                </motion.div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Render Gas Collectible */}
+                          {cell.isGasNode && (
+                            <motion.div
+                              animate={cols > 25 ? {} : { scale: [1, 1.15, 1], rotate: [0, 10, -10, 0] }}
+                              transition={{ repeat: Infinity, duration: 2.5 }}
+                              className="absolute inset-0 flex items-center justify-center z-10"
+                            >
+                              <Coins className="w-4 h-4 text-emerald-600 drop-shadow-[0_0_8px_rgba(52,211,153,0.4)]" />
+                            </motion.div>
+                          )}
+
+                          {/* Render Validator Power-up Collectible */}
+                          {cell.isValidatorNode && (
+                            <motion.div
+                              animate={cols > 25 ? {} : { y: [0, -2, 0] }}
+                              transition={{ repeat: Infinity, duration: 1.8 }}
+                              className="absolute inset-0 flex items-center justify-center z-10"
+                            >
+                              <ShieldCheck className="w-4 h-4 text-cerulean-sky drop-shadow-[0_0_8px_rgba(17,123,200,0.4)]" />
+                            </motion.div>
+                          )}
+
+                          {/* Render Special Key Collectible */}
+                          {cell.isSpecialToken && (
+                            <motion.div
+                              animate={cols > 25 ? {} : { scale: [1, 1.2, 1], rotate: [0, 15, -15, 0] }}
+                              transition={{ repeat: Infinity, duration: 2 }}
+                              className="absolute inset-0 flex items-center justify-center z-10"
+                            >
+                              <Key className="w-4 h-4 text-warm-red drop-shadow-[0_0_8px_rgba(200,60,42,0.4)]" />
+                            </motion.div>
+                          )}
+
+                        </div>
+                      );
+                    })
+                  )}
+
+                  {/* Floating Player Token (Separate absolute element for fluid, unstretched, ultra-smooth movement) */}
+                  {(() => {
                     const activeTheme = L2_THEMES[l2Theme] || L2_THEMES['base-blue'];
-
-                    // Is this cell on the optimized hint path?
-                    const isOnHint = showHint && shortestPath.some(([px, py]) => px === x && py === y);
-
-                  return (
-                    <div
-                      key={`${x}-${y}`}
-                      id={`cell-${x}-${y}`}
-                      className={getCellClassName(cell)}
-                    >
-                      {/* Background fill if starting / exit / hint path */}
-                      {isStart && (
-                        <div className="absolute inset-0 flex items-center justify-center font-mono text-[9px] font-bold z-0 bg-cerulean-sky/10 text-cerulean-sky">
-                          {translations[lang].mazeboard.wallet_label}
-                        </div>
-                      )}
-                      {isExit && (
-                        <div className="absolute inset-0 flex items-center justify-center font-mono text-[9px] font-bold z-0 bg-warm-red/10 text-warm-red">
-                          {translations[lang].mazeboard.block_label}
-                        </div>
-                      )}
-
-                      {/* Gas-Optimized Route Hint Line - beautifully stylized! */}
-                      {isOnHint && !isPlayer && !isStart && !isExit && (
-                        <div className="absolute inset-2 rounded-full animate-pulse z-0 border bg-warm-red/10 border-warm-red/35 shadow-sm shadow-warm-red/10"></div>
-                      )}
-
-                      {/* Render Portal Bridge */}
-                      {cell.isPortal && (
-                        <div className="absolute inset-1.5 rounded-full bg-cerulean-sky/20 border border-cerulean-sky/40 flex items-center justify-center animate-spin z-0">
-                          <Zap size={10} className="text-cerulean-sky" />
-                        </div>
-                      )}
-
-                      {/* Render Gas Collectible */}
-                      {cell.isGasNode && (
+                    return (
+                      <motion.div
+                        className="absolute top-0 left-0 pointer-events-none z-20 flex items-center justify-center"
+                        style={{
+                          width: `${100 / cols}%`,
+                          height: `${100 / rows}%`
+                        }}
+                        animate={{
+                          x: `${player.x * 100}%`,
+                          y: `${player.y * 100}%`
+                        }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 240, // Increased responsiveness
+                          damping: 24,    // Perfect damping for no jitter or overshoot
+                          mass: 0.75
+                        }}
+                      >
                         <motion.div
-                          animate={{ scale: [1, 1.15, 1], rotate: [0, 10, -10, 0] }}
-                          transition={{ repeat: Infinity, duration: 2.5 }}
-                          className="absolute inset-0 flex items-center justify-center z-10"
-                        >
-                          <Coins className="w-4 h-4 text-emerald-600 drop-shadow-[0_0_8px_rgba(52,211,153,0.4)]" />
-                        </motion.div>
-                      )}
-
-                      {/* Render Validator Power-up Collectible */}
-                      {cell.isValidatorNode && (
-                        <motion.div
-                          animate={{ y: [0, -2, 0] }}
-                          transition={{ repeat: Infinity, duration: 1.8 }}
-                          className="absolute inset-0 flex items-center justify-center z-10"
-                        >
-                          <ShieldCheck className="w-4 h-4 text-cerulean-sky drop-shadow-[0_0_8px_rgba(17,123,200,0.4)]" />
-                        </motion.div>
-                      )}
-
-                      {/* Render Special Key Collectible */}
-                      {cell.isSpecialToken && (
-                        <motion.div
-                          animate={{ scale: [1, 1.2, 1], rotate: [0, 15, -15, 0] }}
-                          transition={{ repeat: Infinity, duration: 2 }}
-                          className="absolute inset-0 flex items-center justify-center z-10"
-                        >
-                          <Key className="w-4 h-4 text-warm-red drop-shadow-[0_0_8px_rgba(200,60,42,0.4)]" />
-                        </motion.div>
-                      )}
-
-                      {/* Render Player Token with Glowing Base Circle Logo */}
-                      {isPlayer && (
-                        <motion.div
-                          layoutId="player-token"
-                          className="absolute inset-1 rounded-full border border-white flex items-center justify-center shadow-lg z-20 transition-colors duration-300"
+                          initial={{ scale: 0, opacity: 0 }}
+                          animate={{ 
+                            scale: isTeleporting ? [1, 0.25, 0] : 1, 
+                            rotate: isTeleporting ? [0, 360, 720] : 0,
+                            opacity: isTeleporting ? [1, 0.4, 0] : 1 
+                          }}
+                          transition={{
+                            scale: { 
+                              type: isTeleporting ? "tween" : "spring", 
+                              stiffness: 320, 
+                              damping: 18,
+                              ease: isTeleporting ? "easeInOut" : undefined,
+                              duration: isTeleporting ? 0.9 : undefined
+                            },
+                            rotate: { duration: 0.9, ease: "easeInOut" },
+                            opacity: { duration: 0.9 }
+                          }}
+                          className="w-[80%] h-[80%] aspect-square rounded-full border border-white flex items-center justify-center shadow-md transition-colors duration-300"
                           style={{
                             backgroundColor: activeTheme.accentColor,
-                            boxShadow: `0 10px 15px -3px ${activeTheme.accentColor}44, 0 4px 6px -4px ${activeTheme.accentColor}44`
+                            boxShadow: `0 8px 12px -3px ${activeTheme.accentColor}55, 0 4px 6px -4px ${activeTheme.accentColor}55`
                           }}
                         >
                           {/* Inner white circle */}
@@ -1399,14 +1527,13 @@ export default function MazeBoard({
                             ></div>
                           </div>
                         </motion.div>
-                      )}
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          );
-        })()}
+                      </motion.div>
+                    );
+                  })()}
+                </motion.div>
+              </div>
+            );
+          })()}
 
           {/* Scanner Overlay during Auto-solve */}
           {autoSolving && (
