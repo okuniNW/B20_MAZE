@@ -44,6 +44,8 @@ export interface TranslationDictionary {
     campaign_progress: string;
     campaign_desc: string;
     level_label: string;
+    zen_title: string;
+    zen_desc: string;
   };
   leaderboard_screen: {
     title: string;
@@ -162,6 +164,8 @@ export const translations: Record<Language, TranslationDictionary> = {
       campaign_progress: "Campaign Progress",
       campaign_desc: "Unlock levels linearly. Master your skills and progress from Level 1 to Level 1000!",
       level_label: "Level",
+      zen_title: "Zen Mode",
+      zen_desc: "Infinite, auto-generating maze block. No timers, no collision penalties, no pressure.",
     },
     leaderboard_screen: {
       title: "BEST VALIDATOR BOARD",
@@ -287,6 +291,8 @@ export const translations: Record<Language, TranslationDictionary> = {
       campaign_progress: "Progres Kampanye",
       campaign_desc: "Buka tingkat level secara linear. Kuasai keahlian Anda dari Level 1 hingga Level 1000!",
       level_label: "Level",
+      zen_title: "Mode Zen",
+      zen_desc: "Labirin tak terbatas yang dibuat otomatis. Tanpa timer, tanpa penalti tabrakan, tanpa tekanan.",
     },
     leaderboard_screen: {
       title: "BOARD VALIDATOR TERBAIK",
@@ -412,6 +418,8 @@ export const translations: Record<Language, TranslationDictionary> = {
       campaign_progress: "闯关进度",
       campaign_desc: "线性解锁关卡。从第 1 关到第 1000 关，完美磨练您的技能！",
       level_label: "关卡",
+      zen_title: "禅模式",
+      zen_desc: "无限、自动生成的迷宫区块。无计时器，无碰撞处罚，零压力放松体验。",
     },
     leaderboard_screen: {
       title: "最佳验证节点榜",
@@ -537,6 +545,8 @@ export const translations: Record<Language, TranslationDictionary> = {
       campaign_progress: "Progrès Campagne",
       campaign_desc: "Débloquez les niveaux linéairement. Maîtrisez vos compétences du Niveau 1 au Niveau 1000 !",
       level_label: "Niveau",
+      zen_title: "Mode Zen",
+      zen_desc: "Labyrinthe infini généré automatiquement. Pas de chronomètre, pas de pénalité de collision, aucune pression.",
     },
     leaderboard_screen: {
       title: "TABLEAU DES MEILLEURS VALIDATEURS",

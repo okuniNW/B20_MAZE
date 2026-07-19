@@ -940,7 +940,7 @@ export default function App() {
                       </button>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 animate-fade-in">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 animate-fade-in">
                       
                       {/* Level 1: Easy */}
                       <button
@@ -996,6 +996,25 @@ export default function App() {
                         </div>
                         <p className="text-[11px] mt-1.5 leading-relaxed text-deep-navy/70">
                           {translations[lang].difficulty.hard_desc}
+                        </p>
+                      </button>
+
+                      {/* Level 4: Zen Mode */}
+                      <button
+                        type="button"
+                        onClick={() => { sound.playMove(); setDifficulty('zen'); }}
+                        className={`p-4 rounded-xl text-left border cursor-pointer transition-all ${
+                          difficulty === 'zen'
+                            ? 'bg-cloud-white border-2 border-deep-navy shadow-sm'
+                            : 'bg-white/50 border-deep-navy/10 hover:border-deep-navy/30 text-deep-navy/80 hover:bg-white'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-serif font-bold text-sm text-deep-navy">{translations[lang].difficulty.zen_title}</span>
+                          <span className="text-[10px] font-mono font-bold text-emerald-500">∞ x ∞</span>
+                        </div>
+                        <p className="text-[11px] mt-1.5 leading-relaxed text-deep-navy/70">
+                          {translations[lang].difficulty.zen_desc}
                         </p>
                       </button>
 

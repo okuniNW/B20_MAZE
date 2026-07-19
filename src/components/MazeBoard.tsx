@@ -78,6 +78,14 @@ export default function MazeBoard({
   l2Theme = 'base-blue',
   onQuestProgress
 }: MazeBoardProps) {
+  const [zenBlocksConquered, setZenBlocksConquered] = useState(() => {
+    return Number(localStorage.getItem('base_maze_zen_blocks_conquered') || '0');
+  });
+
+  useEffect(() => {
+    localStorage.setItem('base_maze_zen_blocks_conquered', String(zenBlocksConquered));
+  }, [zenBlocksConquered]);
+
   // Determine grid size based on difficulty
   const getGridConfig = (diff: Difficulty, isCamp?: boolean, campLvl?: number) => {
     if (isCamp && campLvl) {
@@ -98,6 +106,16 @@ export default function MazeBoard({
         return { cols: 21, rows: 21, gasCount: 12, valCount: 4, hasPortal: true };
       case 'superchain':
         return { cols: 50, rows: 50, gasCount: 30, valCount: 10, hasPortal: true };
+      case 'zen': {
+        const size = Math.min(30, 10 + Math.floor(zenBlocksConquered % 15));
+        return {
+          cols: size,
+          rows: size,
+          gasCount: Math.max(2, Math.floor(size * 0.4)),
+          valCount: Math.max(1, Math.floor(size * 0.2)),
+          hasPortal: true
+        };
+      }
       default:
         return { cols: 10, rows: 10, gasCount: 4, valCount: 2, hasPortal: false };
     }
@@ -300,7 +318,7 @@ export default function MazeBoard({
           console.error("Error parsing saved campaign state:", e);
         }
       }
-    } else if (!isCampaign && !forceFresh) {
+    } else if (!isCampaign && !forceFresh && difficulty !== 'zen') {
       const savedStateStr = localStorage.getItem('base_maze_classic_resume_state');
       if (savedStateStr) {
         try {
@@ -336,7 +354,7 @@ export default function MazeBoard({
     setPlayer({ x: 0, y: 0 });
     const initialValidatorTokens = isCampaign
       ? Number(localStorage.getItem('base_maze_campaign_bypass_keys') || '0')
-      : 0;
+      : (difficulty === 'zen' ? 10 : 0);
     setStats({
       timeElapsed: 0,
       gasCost: 0.0095,
@@ -637,7 +655,7 @@ export default function MazeBoard({
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [difficulty, isCampaign, campaignLevel]);
+  }, [difficulty, isCampaign, campaignLevel, zenBlocksConquered]);
 
   // Save state on any gameplay update
   useEffect(() => {
@@ -866,7 +884,11 @@ export default function MazeBoard({
 
         // Check Win Condition
         if (nextX === cols - 1 && nextY === rows - 1) {
-          triggerWin();
+          if (difficulty === 'zen') {
+            triggerZenNextLevel();
+          } else {
+            triggerWin();
+          }
         } else {
           // Recalculate hint route from new position
           calculateShortestPath(updatedGrid, nextX, nextY);
@@ -875,6 +897,47 @@ export default function MazeBoard({
     } else {
       sound.playError();
     }
+  };
+
+  const triggerZenNextLevel = () => {
+    sound.playWin();
+
+    // Reward player!
+    setSpecialTokens(prev => prev + 1);
+    setStats(prev => ({
+      ...prev,
+      validatorTokens: prev.validatorTokens + 2
+    }));
+
+    // Trigger celebration feedback
+    triggerFeedback('Block Confirmed! +1 Key, +2 Bypasses', 'zen');
+    setToastMessage(lang === 'id'
+      ? `🌈 Blok Zen Selesai! Menghasilkan Blok Baru...`
+      : `🌈 Zen Block Confirmed! Generating a new block...`
+    );
+
+    // Generate celebratory particles using motion/react
+    const colors = ['#0052FF', '#38BDF8', '#34D399', '#FBBF24', '#F43F5E', '#A855F7'];
+    const newParticles: Particle[] = Array.from({ length: 45 }).map((_, i) => {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 120 + Math.random() * 200;
+      return {
+        id: i,
+        x: 0,
+        y: 0,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        size: 5 + Math.random() * 8,
+        angle: angle,
+        speed: speed,
+        delay: Math.random() * 0.1,
+      };
+    });
+    setParticles(newParticles);
+
+    // Short delayed increment to let player see the end reach before new generation
+    setTimeout(() => {
+      setZenBlocksConquered(prev => prev + 1);
+    }, 1200);
   };
 
   const triggerWin = () => {
@@ -1117,7 +1180,11 @@ export default function MazeBoard({
         pathIndex++;
       } else {
         clearInterval(interval);
-        triggerWin();
+        if (difficulty === 'zen') {
+          triggerZenNextLevel();
+        } else {
+          triggerWin();
+        }
       }
     }, 120);
   };
@@ -1806,8 +1873,10 @@ export default function MazeBoard({
 
           <div className="mt-4 border-t pt-4 flex flex-col gap-2 border-deep-navy/10">
             <div className="flex items-center justify-between text-xs font-mono">
-              <span className="text-deep-navy/50">{translations[lang].mazeboard.block_num_label}</span>
-              <span className="font-semibold text-deep-navy/80">#{blockHeight}</span>
+              <span className="text-deep-navy/50">{difficulty === 'zen' ? (lang === 'id' ? 'Blok Zen Selesai' : 'Zen Blocks Conquered') : translations[lang].mazeboard.block_num_label}</span>
+              <span className="font-semibold text-deep-navy/80">
+                {difficulty === 'zen' ? `${zenBlocksConquered}` : `#${blockHeight}`}
+              </span>
             </div>
             <div className="flex items-center justify-between text-xs font-mono">
               <span className="text-deep-navy/50">{translations[lang].mazeboard.stability_label}</span>
