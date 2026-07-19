@@ -268,13 +268,13 @@ export default function Leaderboard({ onBackToMenu, currentDifficulty, playerNam
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
+      <div className="rounded-2xl p-5 mb-6 border border-white/20 bg-white/75 backdrop-blur-xl shadow-[0_8px_30px_rgba(6,29,51,0.04)] flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl border border-warm-red/20 bg-warm-red/5 text-warm-red flex items-center justify-center shadow-sm">
+          <div className="w-10 h-10 rounded-xl border border-warm-red/20 bg-warm-red/5 text-warm-red flex items-center justify-center shadow-sm flex-shrink-0">
             <Trophy size={20} className="animate-bounce" />
           </div>
-          <div>
-            <h1 className="text-2xl font-serif font-light text-deep-navy tracking-wide">
+          <div className="text-left">
+            <h1 className="text-2xl font-serif font-extrabold text-deep-navy tracking-wide">
               {t.title}
             </h1>
             <p className="text-xs font-mono text-deep-navy/60">
@@ -289,7 +289,7 @@ export default function Leaderboard({ onBackToMenu, currentDifficulty, playerNam
               sound.playMove();
               onBackToMenu();
             }}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-sans font-bold transition cursor-pointer border bg-white border-deep-navy/15 text-deep-navy/80 hover:text-deep-navy hover:border-deep-navy/30 hover:bg-cloud-white shadow-sm"
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-sans font-bold transition cursor-pointer border bg-white border-deep-navy/15 text-deep-navy/80 hover:text-deep-navy hover:border-deep-navy/30 hover:bg-cloud-white shadow-sm"
           >
             <ArrowLeft size={14} />
             {t.back_to_game}
@@ -297,7 +297,7 @@ export default function Leaderboard({ onBackToMenu, currentDifficulty, playerNam
 
           <button
             onClick={handleClear}
-            className="p-2 rounded-xl transition cursor-pointer border bg-rose-50 border-rose-200 hover:bg-rose-100/50 text-rose-600 shadow-sm"
+            className="p-2.5 rounded-xl transition cursor-pointer border bg-rose-50 border-rose-200 hover:bg-rose-100/50 text-rose-600 shadow-sm flex items-center justify-center"
             title="Reset Leaderboard"
           >
             <Trash2 size={16} />

@@ -161,18 +161,22 @@ export default function Onboarding({ onStart, lang, theme = 'light', specialToke
         </div>
       </motion.div>
 
-      {/* Headings - Premium Typography Hierarchy */}
+      {/* Headings - Premium Typography Hierarchy inside a beautiful translucent glass card for readability and aesthetic appeal */}
       <motion.div
         initial={{ y: 15, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.1, duration: 0.6 }}
-        className="text-center mb-10 max-w-xl"
+        className="text-center mb-10 max-w-xl p-6 sm:p-8 rounded-3xl border border-white/20 bg-white/75 backdrop-blur-xl shadow-[0_20px_50px_rgba(6,29,51,0.04)] relative overflow-hidden"
       >
-        <h1 className="text-4xl sm:text-5xl font-serif font-extrabold tracking-tight text-deep-navy leading-tight">
-          Find Your Way to B20
+        {/* Subtle decorative inner corner rings for visual polish */}
+        <div className="absolute top-0 left-0 w-24 h-24 border-t border-l border-[#0052FF]/5 rounded-tl-3xl pointer-events-none" />
+        <div className="absolute bottom-0 right-0 w-24 h-24 border-b border-r border-[#0052FF]/5 rounded-br-3xl pointer-events-none" />
+
+        <h1 className="text-4.5xl sm:text-5xl font-serif font-extrabold tracking-tight text-deep-navy leading-tight relative z-10">
+          {lang === 'id' ? 'Temukan Jalanmu ke B20' : lang === 'fr' ? 'Trouvez votre chemin vers B20' : lang === 'zh' ? '开启您的 B20 之旅' : 'Find Your Way to B20'}
         </h1>
-        <p className="mt-4 text-sm sm:text-base leading-relaxed text-slate-600 font-sans font-normal">
-          Explore the maze, collect essential B20 components, unlock hidden paths, and reach the launch portal. Learn the new B20 token standard while enjoying an interactive adventure built on Base.
+        <p className="mt-4 text-xs sm:text-sm leading-relaxed text-slate-700 font-sans font-normal relative z-10">
+          {translations[lang].onboarding.description}
         </p>
       </motion.div>
 

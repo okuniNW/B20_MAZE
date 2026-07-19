@@ -263,16 +263,23 @@ export default function App() {
     <div 
       className="min-h-screen flex flex-col font-sans transition-colors duration-300 selection:bg-cerulean-sky/20 text-deep-navy cora-canvas"
       style={{
-        backgroundImage: `linear-gradient(to bottom, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.96)), ${L2_THEMES[l2Theme].bgGradient}, url(${hillsBgImage})`
+        backgroundImage: `url(${hillsBgImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        backgroundAttachment: 'fixed'
       }}
     >
       
-      {/* FLOATING HEADER PILL (COOLDOCK / IMAGE 2 STYLE) - Frosted Dark Glassmorphism */}
+      {/* FLOATING HEADER PILL (COOLDOCK / IMAGE 2 STYLE) - Frosted White Glassmorphism & Translucent Overlay */}
       <div className="sticky top-0 z-50 w-full px-4 pt-4 pb-2">
-        <header className="relative mx-auto max-w-2xl bg-[#0A0A0A]/75 backdrop-blur-[20px] rounded-full border border-white/15 shadow-[0_12px_40px_rgba(0,0,0,0.3)] hover:shadow-[0_16px_48px_rgba(0,0,0,0.4)] px-5 py-3 flex items-center justify-between transition-all duration-300">
+        <header className="relative mx-auto max-w-2xl bg-white/75 backdrop-blur-[20px] rounded-full border border-cerulean-sky/15 shadow-[0_8px_30px_rgba(6,29,51,0.06)] hover:shadow-[0_12px_36px_rgba(6,29,51,0.1)] px-5 py-3 flex items-center justify-between transition-all duration-300">
           
-          {/* Empty spacer to balance the menu button on the right */}
-          <div className="w-10 h-10 flex-shrink-0" />
+          {/* Active network dot & L2 Base badge on the left to balance the header and add high-fidelity polish */}
+          <div className="flex items-center gap-1.5 bg-[#0052FF]/5 border border-[#0052FF]/10 rounded-full px-2.5 py-1 text-[9px] font-mono font-bold text-cerulean-sky select-none flex-shrink-0">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="hidden xs:inline">BASE L2</span>
+          </div>
 
           {/* Centered Logo & Brand title */}
           <div 
@@ -282,7 +289,7 @@ export default function App() {
             {/* Custom Base Wordmark SVG Logo */}
             <svg 
               viewBox="0 0 440 150" 
-              className="h-5 w-auto text-white transition-all duration-300 group-hover:scale-105 flex-shrink-0"
+              className="h-5 w-auto text-cerulean-sky transition-all duration-300 group-hover:scale-105 flex-shrink-0"
               fill="currentColor"
             >
               {/* b-shape */}
@@ -299,7 +306,7 @@ export default function App() {
           {/* Menu Button with Hamburger Menu Icon */}
           <button
             onClick={() => { sound.playMove(); setIsMenuOpen(!isMenuOpen); }}
-            className="p-2.5 rounded-full border border-white/20 bg-white/10 hover:bg-white/20 text-white hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center cursor-pointer select-none"
+            className="p-2.5 rounded-full border border-cerulean-sky/15 bg-cerulean-sky/5 hover:bg-cerulean-sky/10 text-cerulean-sky hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center cursor-pointer select-none"
             aria-label="Toggle menu"
           >
             <Menu size={16} />

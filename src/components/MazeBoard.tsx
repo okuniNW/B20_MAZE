@@ -255,6 +255,23 @@ export default function MazeBoard({
   // Solved Path State
   const [shortestPath, setShortestPath] = useState<[number, number][]>([]);
 
+  // Warp transition states
+  const [warpState, setWarpState] = useState<'idle' | 'closing' | 'opening'>('idle');
+  const [pendingLevelAction, setPendingLevelAction] = useState<(() => void) | null>(null);
+
+  const startWarpTransition = (onWarpMidpoint: () => void) => {
+    setWarpState('closing');
+    setPendingLevelAction(() => onWarpMidpoint);
+  };
+
+  const executeLevelChange = () => {
+    if (pendingLevelAction) {
+      pendingLevelAction();
+      setPendingLevelAction(null);
+    }
+    setWarpState('opening');
+  };
+
   // Timer Ref
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const blockTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -936,7 +953,9 @@ export default function MazeBoard({
 
     // Short delayed increment to let player see the end reach before new generation
     setTimeout(() => {
-      setZenBlocksConquered(prev => prev + 1);
+      startWarpTransition(() => {
+        setZenBlocksConquered(prev => prev + 1);
+      });
     }, 1200);
   };
 
@@ -1762,9 +1781,11 @@ export default function MazeBoard({
                       <button
                         onClick={() => {
                           sound.playPowerup();
-                          if (onLevelCompleted) {
-                            onLevelCompleted(campaignLevel + 1);
-                          }
+                          startWarpTransition(() => {
+                            if (onLevelCompleted) {
+                              onLevelCompleted(campaignLevel + 1);
+                            }
+                          });
                         }}
                         className="flex-1 py-2 md:py-2.5 bg-deep-navy text-white font-sans font-bold rounded-xl text-[11px] md:text-xs shadow-md shadow-deep-navy/20 cursor-pointer hover:bg-deep-navy/90 transition text-center"
                       >
@@ -1790,7 +1811,9 @@ export default function MazeBoard({
                     <button
                       onClick={() => {
                         sound.playPowerup();
-                        generateMaze(true);
+                        startWarpTransition(() => {
+                          generateMaze(true);
+                        });
                       }}
                       className="flex-1 py-2 md:py-2.5 bg-deep-navy text-white font-sans font-bold rounded-xl text-[11px] md:text-xs shadow-md shadow-deep-navy/20 cursor-pointer hover:bg-deep-navy/90 transition text-center"
                     >
@@ -2006,6 +2029,85 @@ export default function MazeBoard({
           {translations[lang].mazeboard.back_to_menu}
         </button>
       </div>
+
+      {/* Cinematic Circular Mask Warp Transition Overlay */}
+      <AnimatePresence>
+        {warpState !== 'idle' && (
+          <motion.div
+            key="warp-overlay"
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#060B1A] overflow-hidden pointer-events-auto"
+            style={{
+              backgroundImage: `radial-gradient(circle at center, rgba(0, 82, 255, 0.2) 0%, rgba(6, 11, 26, 0.98) 75%)`
+            }}
+            initial={{ clipPath: 'circle(0% at 50% 50%)' }}
+            animate={
+              warpState === 'closing'
+                ? { clipPath: 'circle(150% at 50% 50%)' }
+                : { clipPath: 'circle(0% at 50% 50%)' }
+            }
+            exit={{ clipPath: 'circle(0% at 50% 50%)' }}
+            transition={{ duration: 0.9, ease: [0.76, 0, 0.24, 1] }}
+            onAnimationComplete={() => {
+              if (warpState === 'closing') {
+                executeLevelChange();
+              } else if (warpState === 'opening') {
+                setWarpState('idle');
+              }
+            }}
+          >
+            {/* Warp Portal Core Visuals */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+              {/* Outer swirling track */}
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+                className="w-[450px] h-[450px] md:w-[600px] md:h-[600px] rounded-full border border-cerulean-sky/10 flex items-center justify-center relative opacity-40"
+              >
+                <div className="absolute w-2 h-2 rounded-full bg-cerulean-sky/60 blur-[2px] top-1/4 left-1/4"></div>
+                <div className="absolute w-3 h-3 rounded-full bg-warm-red/50 blur-[2px] bottom-1/4 right-1/4"></div>
+              </motion.div>
+
+              {/* Middle glowing portal ring */}
+              <motion.div
+                animate={{ scale: [1, 1.08, 1], rotate: -360 }}
+                transition={{ 
+                  scale: { duration: 3, repeat: Infinity, ease: "easeInOut" }, 
+                  rotate: { duration: 25, repeat: Infinity, ease: "linear" } 
+                }}
+                className="absolute w-[300px] h-[300px] md:w-[400px] md:h-[400px] rounded-full border-2 border-dashed border-[#0052FF]/30 flex items-center justify-center"
+              >
+                <div className="absolute w-4 h-4 rounded-full bg-[#0052FF]/40 blur-[4px] top-10"></div>
+                <div className="absolute w-3 h-3 rounded-full bg-emerald-500/30 blur-[2px] bottom-10"></div>
+              </motion.div>
+
+              {/* Center vortex core with luxury styling & telemetry details */}
+              <motion.div 
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.2, duration: 0.5 }}
+                className="absolute w-40 h-40 md:w-48 md:h-48 rounded-full bg-[#061026]/90 border border-[#0052FF]/45 flex flex-col items-center justify-center shadow-[0_0_60px_rgba(0,82,255,0.4)] px-4 text-center"
+              >
+                {/* Micro tech line */}
+                <div className="w-6 h-[2px] bg-[#38BDF8] rounded-full mb-3"></div>
+                
+                <span className="text-[11px] md:text-xs font-mono tracking-widest text-[#38BDF8] uppercase font-bold animate-pulse">
+                  {lang === 'id' ? 'MEMINDAI...' : 'WARPING...'}
+                </span>
+                
+                {/* L2 Block reference */}
+                <span className="text-[9px] md:text-[10px] font-mono text-[#38BDF8]/60 mt-1.5 font-semibold">
+                  {difficulty === 'zen' ? `ZEN BLOCK #${zenBlocksConquered}` : `L2 BLOCK #${blockHeight}`}
+                </span>
+
+                {/* Sub-status label */}
+                <span className="text-[8px] font-mono text-white/40 mt-3 uppercase tracking-wider">
+                  {lang === 'id' ? 'Menyinkronkan Node...' : 'Syncing Node...'}
+                </span>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
