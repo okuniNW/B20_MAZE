@@ -825,7 +825,7 @@ export default function Leaderboard({ onBackToMenu, currentDifficulty, playerNam
                       )}
                     </span>
                     <span className="font-semibold text-slate-600">
-                      {badge.progress.toLocaleString()} / {badge.target.toLocaleString()} ({percent}%)
+                      {(badge?.progress ?? 0).toLocaleString()} / {(badge?.target ?? 0).toLocaleString()} ({percent}%)
                     </span>
                   </div>
                   <div className="w-full bg-slate-200/60 h-1.5 rounded-full overflow-hidden border border-slate-300/15">
@@ -966,22 +966,22 @@ export default function Leaderboard({ onBackToMenu, currentDifficulty, playerNam
                         {getDifficultyBadge(score.difficulty, score.level)}
                       </td>
                       <td className="py-4 px-4 text-right font-mono font-semibold text-deep-navy">
-                        {score.time.toFixed(2)}s
+                        {(score?.time ?? 0).toFixed(2)}s
                       </td>
                       <td className="py-4 px-4 text-right font-mono text-cerulean-sky font-extrabold">
-                        {score.tps.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                        {(score?.tps ?? 0).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                       </td>
                       <td className="py-4 px-4 text-right font-mono font-bold text-warm-red">
-                        {score.gasUsed}
+                        {score?.gasUsed ?? 0}
                       </td>
                       <td className="py-4 px-4 text-right font-mono text-deep-navy/80">
-                        {score.totalMoves !== undefined ? score.totalMoves : Math.round(score.time * 2.5) || 12}
+                        {score?.totalMoves !== undefined ? score.totalMoves : Math.round((score?.time ?? 0) * 2.5) || 12}
                       </td>
                       <td className="py-4 px-4 text-right font-mono text-emerald-600 font-bold">
-                        {(score.bestEfficiency !== undefined ? score.bestEfficiency : Math.max(65, Math.min(100, Math.round(98 - score.time / 2)))).toFixed(1)}%
+                        {(score?.bestEfficiency !== undefined ? score.bestEfficiency : Math.max(65, Math.min(100, Math.round(98 - (score?.time ?? 0) / 2)))).toFixed(1)}%
                       </td>
                       <td className="py-4 px-4 text-right font-mono text-deep-navy/40 text-xs hidden sm:table-cell">
-                        #{score.blockHeight}
+                        #{score?.blockHeight ?? 0}
                       </td>
                     </motion.tr>
                   );

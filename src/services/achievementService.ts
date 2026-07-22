@@ -523,6 +523,13 @@ export const achievementService = {
   },
 
   /**
+   * Alias for getAchievements
+   */
+  getAll(): Achievement[] {
+    return this.getAchievements();
+  },
+
+  /**
    * Generates analytical statistics of the achievement system.
    */
   getAchievementStats() {

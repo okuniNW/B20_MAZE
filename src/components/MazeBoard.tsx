@@ -1748,13 +1748,13 @@ export default function MazeBoard({
                 <div className="mt-3 md:mt-4 flex gap-3 md:gap-6 p-3 md:p-4 rounded-xl text-center font-mono border shadow-inner bg-cloud-white border-deep-navy/10 w-full max-w-sm justify-around shrink-0">
                   <div>
                     <span className="block text-[9px] md:text-[10px] text-deep-navy/50 uppercase">{translations[lang].mazeboard.time_short}</span>
-                    <span className="text-xs md:text-sm font-bold text-deep-navy">{stats.timeElapsed.toFixed(2)}s</span>
+                    <span className="text-xs md:text-sm font-bold text-deep-navy">{(stats?.timeElapsed ?? 0).toFixed(2)}s</span>
                   </div>
                   <div className="border-r border-deep-navy/10"></div>
                   <div>
                     <span className="block text-[9px] md:text-[10px] text-deep-navy/50 uppercase">{translations[lang].mazeboard.throughput_short}</span>
                     <span className="text-xs md:text-sm font-bold text-cerulean-sky">
-                      {((cols * rows * 120) / Math.max(0.5, stats.timeElapsed)).toLocaleString(undefined, { maximumFractionDigits: 1 })} TPS
+                      {(((cols || 1) * (rows || 1) * 120) / Math.max(0.5, stats?.timeElapsed || 0.5)).toLocaleString(undefined, { maximumFractionDigits: 1 })} TPS
                     </span>
                   </div>
                   <div className="border-r border-deep-navy/10"></div>
@@ -1986,30 +1986,30 @@ export default function MazeBoard({
             {/* Live Timer */}
             <div className="p-3 rounded-xl border bg-cloud-white border-deep-navy/10 shadow-sm">
               <span className="block text-[10px] font-mono text-deep-navy/50 uppercase">{translations[lang].mazeboard.time_elapsed_label}</span>
-              <span className="text-lg font-mono font-bold tracking-tight text-deep-navy">{stats.timeElapsed.toFixed(2)}s</span>
+              <span className="text-lg font-mono font-bold tracking-tight text-deep-navy">{(stats?.timeElapsed ?? 0).toFixed(2)}s</span>
             </div>
 
             {/* Simulated Live Gas */}
             <div className="p-3 rounded-xl border bg-cloud-white border-deep-navy/10 shadow-sm">
               <span className="block text-[10px] font-mono text-deep-navy/50 uppercase font-bold">{translations[lang].mazeboard.gas_fee_label}</span>
               <span className="text-lg font-mono font-bold tracking-tight text-emerald-600">
-                {Math.max(1, Math.round(stats.gasCost * 1000))} Gwei
+                {Math.max(1, Math.round((stats?.gasCost ?? 0) * 1000))} Gwei
               </span>
             </div>
 
             {/* Total Moves */}
             <div className="p-3 rounded-xl border bg-cloud-white border-deep-navy/10 shadow-sm">
               <span className="block text-[10px] font-mono text-deep-navy/50 uppercase">{translations[lang].mazeboard.data_processed_label}</span>
-              <span className="text-sm font-mono font-bold text-deep-navy/70">{stats.transactionsMade} hops</span>
+              <span className="text-sm font-mono font-bold text-deep-navy/70">{stats?.transactionsMade ?? 0} hops</span>
             </div>
 
             {/* TPS estimation */}
             <div className="p-3 rounded-xl border bg-cloud-white border-deep-navy/10 shadow-sm">
               <span className="block text-[10px] font-mono text-deep-navy/50 uppercase">{translations[lang].mazeboard.tps_est_label}</span>
               <span className="text-sm font-mono font-extrabold text-cerulean-sky">
-                {stats.transactionsMade === 0
+                {!stats || stats.transactionsMade === 0
                   ? '0.0'
-                  : ((cols * rows * 120) / Math.max(0.5, stats.timeElapsed)).toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                  : (((cols || 1) * (rows || 1) * 120) / Math.max(0.5, stats?.timeElapsed || 0.5)).toLocaleString(undefined, { maximumFractionDigits: 1 })}
               </span>
             </div>
           </div>

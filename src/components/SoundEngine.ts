@@ -472,6 +472,19 @@ class SoundEngine {
     osc.start();
     osc.stop(this.ctx.currentTime + 0.2);
   }
+
+  playSuccess() {
+    this.playWin();
+  }
+
+  setMuted(isMuted: boolean) {
+    this.setMute(isMuted);
+  }
+
+  toggleMute() {
+    this.muted = !this.muted;
+    return this.muted;
+  }
 }
 
 export const sound = new SoundEngine();

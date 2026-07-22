@@ -93,6 +93,15 @@ class AnalyticsService {
     }, 10000);
   }
 
+  /**
+   * Generic event tracker for custom UI events.
+   */
+  track(eventName: string, properties?: Record<string, any>): void {
+    if (eventName === 'faucet_claim') {
+      this.trackDailyStreakCheckin();
+    }
+  }
+
   // --- Trackers ---
 
   /**
