@@ -24,7 +24,8 @@ import {
   Map,
   Send,
   Heart,
-  Sparkles
+  Sparkles,
+  Zap
 } from 'lucide-react';
 import { Difficulty, ScoreEntry, L2Theme, CHAPTERS, getChapterForLevel } from './types';
 import Onboarding from './components/Onboarding';
@@ -36,12 +37,16 @@ import ClipboardPanel from './components/ClipboardPanel';
 import FooterModals from './components/FooterModals';
 import BaseHub from './components/BaseHub';
 import { L2_THEMES } from './lib/themes';
+import { usePlayer } from './context/PlayerContext';
+import { analyticsService } from './services/analyticsService';
+import { eventService } from './services/eventService';
 // @ts-ignore
 import soltWagnerImage from './assets/images/solt_wagner_1784096460966.jpg';
 // @ts-ignore
 import hillsBgImage from './assets/images/neoclassical_facade_1784182720447.jpg';
 
 export default function App() {
+  const { specialTokens, setSpecialTokens, customUsername, customPfp, activeSkin, addReputation, hasCheckedInToday } = usePlayer();
   const [screen, setScreen] = useState<'home' | 'playing' | 'leaderboard'>('home');
   const [lang, setLang] = useState<Language>(() => {
     return (localStorage.getItem('base_maze_lang') as Language) || 'en';
@@ -49,7 +54,9 @@ export default function App() {
   const [playerName, setPlayerName] = useState<string>(() => {
     return localStorage.getItem('base_maze_player_name') || '';
   });
-  const [difficulty, setDifficulty] = useState<Difficulty>('standard');
+  const [difficulty, setDifficulty] = useState<Difficulty>(() => {
+    return (localStorage.getItem('base_maze_last_difficulty') as Difficulty) || 'standard';
+  });
   const [isMuted, setIsMuted] = useState(false);
   const [isMusicOn, setIsMusicOn] = useState(() => {
     return localStorage.getItem('base_maze_music_on') !== 'false';
@@ -57,17 +64,22 @@ export default function App() {
   const [tickerIndex, setTickerIndex] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeModal, setActiveModal] = useState<'none' | 'features' | 'faq' | 'updates' | 'clipboard' | 'pricing' | 'privacy' | 'terms' | 'portal' | 'feedback' | 'roadmap'>('none');
-  const [gameMode, setGameMode] = useState<'classic' | 'campaign'>('campaign');
-  const [campaignLevel, setCampaignLevel] = useState<number>(1);
+  const [gameMode, setGameMode] = useState<'classic' | 'campaign'>(() => {
+    return (localStorage.getItem('base_maze_last_game_mode') as 'classic' | 'campaign') || 'campaign';
+  });
   const [unlockedLevel, setUnlockedLevel] = useState<number>(() => {
     return Number(localStorage.getItem('base_maze_unlocked_level') || '1');
   });
+  const [campaignLevel, setCampaignLevel] = useState<number>(() => {
+    const savedLast = Number(localStorage.getItem('base_maze_last_campaign_level'));
+    const unlocked = Number(localStorage.getItem('base_maze_unlocked_level') || '1');
+    if (savedLast && savedLast >= 1 && savedLast <= unlocked) {
+      return savedLast;
+    }
+    return unlocked;
+  });
   const [jumpLevelInput, setJumpLevelInput] = useState<string>('');
   const [jumpError, setJumpError] = useState<string>('');
-
-  const [specialTokens, setSpecialTokens] = useState<number>(() => {
-    return Number(localStorage.getItem('base_maze_special_tokens') || '1');
-  });
 
   const [feedbackRating, setFeedbackRating] = useState(5);
   const [feedbackText, setFeedbackText] = useState('');
@@ -87,13 +99,7 @@ export default function App() {
   const [faucetTxHash, setFaucetTxHash] = useState<string>('');
 
   const [quests, setQuests] = useState<{ id: string; nameEn: string; nameId: string; target: number; current: number; completed: boolean; rewardClaimed: boolean }[]>(() => {
-    const saved = localStorage.getItem('base_maze_quests_v1');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {}
-    }
-    return [
+    const defaultQuests = [
       {
         id: 'speedrun',
         nameEn: '⚡ Fast Block Validation: Clear a level in < 15s',
@@ -120,13 +126,103 @@ export default function App() {
         current: 0,
         completed: false,
         rewardClaimed: false
+      },
+      {
+        id: 'speedrun_ultra',
+        nameEn: '🚀 Ultra Fast Execution: Clear a level in < 6 seconds',
+        nameId: '🚀 Eksekusi Kilat: Selesaikan level dalam < 6 detik',
+        target: 1,
+        current: 0,
+        completed: false,
+        rewardClaimed: false
+      },
+      {
+        id: 'batch_mastery',
+        nameEn: '📦 Batch Sequencer: Clear a Batch complexity level',
+        nameId: '📦 Sekuenser Batch: Selesaikan level kompleksitas Batch',
+        target: 1,
+        current: 0,
+        completed: false,
+        rewardClaimed: false
+      },
+      {
+        id: 'faucet_collector',
+        nameEn: '💧 Testnet Faucet: Claim testnet tokens from the faucet',
+        nameId: '💧 Faucet Testnet: Klaim token testnet dari faucet',
+        target: 1,
+        current: 0,
+        completed: false,
+        rewardClaimed: false
+      },
+      {
+        id: 'streak_maintainer',
+        nameEn: '🔥 Daily Builder: Maintain a 3-day daily streak',
+        nameId: '🔥 Pembina Harian: Jaga streak harian 3 hari berturut-turut',
+        target: 3,
+        current: 0,
+        completed: false,
+        rewardClaimed: false
+      },
+      {
+        id: 'zen_explorer',
+        nameEn: '🧘 Zen Explorer: Finish a maze in Zen Mode',
+        nameId: '🧘 Penjelajah Zen: Selesaikan labirin dalam Zen Mode',
+        target: 1,
+        current: 0,
+        completed: false,
+        rewardClaimed: false
       }
     ];
+
+    const saved = localStorage.getItem('base_maze_quests_v1');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const existingMap = new Map(parsed.map((q: any) => [q.id, q]));
+          defaultQuests.forEach(dq => {
+            if (!existingMap.has(dq.id)) {
+              existingMap.set(dq.id, dq);
+            }
+          });
+          return Array.from(existingMap.values());
+        }
+      } catch (e) {}
+    }
+    return defaultQuests;
   });
 
   useEffect(() => {
     localStorage.setItem('base_maze_quests_v1', JSON.stringify(quests));
   }, [quests]);
+
+  // Automatic UTC 00:00 Daily Quest Refresh with claim preservation
+  useEffect(() => {
+    const checkUtcRefresh = () => {
+      const todayUtc = new Date().toISOString().slice(0, 10);
+      const lastRefresh = localStorage.getItem('base_maze_last_quest_refresh_utc');
+
+      if (lastRefresh && lastRefresh !== todayUtc) {
+        // Record total claimed quests before refresh to preserve claims history
+        const claimedCount = quests.filter(q => q.rewardClaimed).length;
+        const currentSavedClaims = Number(localStorage.getItem('base_maze_total_quest_claims') || '0');
+        localStorage.setItem('base_maze_total_quest_claims', String(currentSavedClaims + claimedCount));
+
+        // Generate fresh daily objectives while preserving list structure
+        setQuests(prev => prev.map(q => ({
+          ...q,
+          current: 0,
+          completed: false,
+          rewardClaimed: false
+        })));
+      }
+      localStorage.setItem('base_maze_last_quest_refresh_utc', todayUtc);
+    };
+
+    checkUtcRefresh();
+    const interval = setInterval(checkUtcRefresh, 60000); // Check every minute
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('base_maze_last_claim_time', String(lastClaimTime));
@@ -137,8 +233,16 @@ export default function App() {
   }, [l2Theme]);
 
   useEffect(() => {
-    localStorage.setItem('base_maze_special_tokens', String(specialTokens));
-  }, [specialTokens]);
+    localStorage.setItem('base_maze_last_campaign_level', String(campaignLevel));
+  }, [campaignLevel]);
+
+  useEffect(() => {
+    localStorage.setItem('base_maze_last_game_mode', gameMode);
+  }, [gameMode]);
+
+  useEffect(() => {
+    localStorage.setItem('base_maze_last_difficulty', difficulty);
+  }, [difficulty]);
 
   const handleQuestProgress = (questId: string, amount: number = 1) => {
     setQuests(prev => prev.map(q => {
@@ -147,16 +251,40 @@ export default function App() {
         const nextCompleted = nextCurrent >= q.target;
         if (nextCompleted) {
           sound.playPowerup();
-          setSpecialTokens(t => t + 1);
         }
         return {
           ...q,
           current: nextCurrent,
-          completed: nextCompleted
+          completed: nextCompleted,
+          rewardClaimed: false
         };
       }
       return q;
     }));
+  };
+
+  const handleClaimQuestReward = (questId: string) => {
+    let rewarded = false;
+    setQuests(prev => prev.map(q => {
+      if (q.id === questId && q.completed && !q.rewardClaimed) {
+        rewarded = true;
+        return {
+          ...q,
+          rewardClaimed: true
+        };
+      }
+      return q;
+    }));
+
+    if (rewarded) {
+      sound.playPowerup();
+      setSpecialTokens(t => t + 1);
+      const multipliers = eventService.getCombinedMultipliers();
+      const baseQuestRep = 25;
+      const finalQuestRep = Math.round(baseQuestRep * multipliers.questMultiplier * multipliers.repMultiplier);
+      addReputation(finalQuestRep);
+      analyticsService.trackQuestCompletion(0, 1);
+    }
   };
 
   useEffect(() => {
@@ -198,6 +326,24 @@ export default function App() {
   const handleStartGame = (name: string) => {
     setPlayerName(name);
     localStorage.setItem('base_maze_player_name', name);
+    setScreen('playing');
+  };
+
+  const handleQuickPlay = (overrideMode?: 'classic' | 'campaign', overrideLevel?: number) => {
+    const effectiveName = playerName.trim() || localStorage.getItem('base_maze_player_name') || 'Anon Builder';
+    if (!playerName) {
+      setPlayerName(effectiveName);
+      localStorage.setItem('base_maze_player_name', effectiveName);
+    }
+    if (overrideMode) {
+      setGameMode(overrideMode);
+      localStorage.setItem('base_maze_last_game_mode', overrideMode);
+    }
+    if (overrideLevel && overrideLevel > 0) {
+      setCampaignLevel(overrideLevel);
+      localStorage.setItem('base_maze_last_campaign_level', String(overrideLevel));
+    }
+    sound.playPowerup();
     setScreen('playing');
   };
 
@@ -276,9 +422,23 @@ export default function App() {
         <header className="relative mx-auto max-w-2xl bg-white/75 backdrop-blur-[20px] rounded-full border border-cerulean-sky/15 shadow-[0_8px_30px_rgba(6,29,51,0.06)] hover:shadow-[0_12px_36px_rgba(6,29,51,0.1)] px-5 py-3 flex items-center justify-between transition-all duration-300">
           
           {/* Active network dot & L2 Base badge on the left to balance the header and add high-fidelity polish */}
-          <div className="flex items-center gap-1.5 bg-[#0052FF]/5 border border-[#0052FF]/10 rounded-full px-2.5 py-1 text-[9px] font-mono font-bold text-cerulean-sky select-none flex-shrink-0">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="hidden xs:inline">BASE L2</span>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 bg-[#0052FF]/5 border border-[#0052FF]/10 rounded-full px-2.5 py-1 text-[9px] font-mono font-bold text-cerulean-sky select-none flex-shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="hidden xs:inline">BASE L2</span>
+            </div>
+
+            {screen === 'home' && (
+              <button
+                onClick={() => handleQuickPlay()}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-sans font-extrabold text-[10px] shadow-sm hover:shadow active:scale-95 transition-all duration-200 cursor-pointer border border-white/20 select-none flex-shrink-0"
+                title={lang === 'id' ? 'Main Langsung < 1 Detik' : '1-Click Quick Play < 1s'}
+              >
+                <Zap className="w-3 h-3 text-yellow-200 animate-pulse" />
+                <span className="hidden sm:inline">⚡ {translations[lang].header.quick_play} (Lvl {campaignLevel})</span>
+                <span className="inline sm:hidden">⚡ Lvl {campaignLevel}</span>
+              </button>
+            )}
           </div>
 
           {/* Centered Logo & Brand title */}
@@ -314,6 +474,43 @@ export default function App() {
         </header>
       </div>
 
+      {/* GLOBAL REWARD REMINDER BANNER - VISIBLE WITHOUT OPENING ACCORDIONS */}
+      {(() => {
+        const pendingQuestsCount = quests.filter(q => q.completed && !q.rewardClaimed).length;
+        const streakPending = !hasCheckedInToday;
+        const totalPending = pendingQuestsCount + (streakPending ? 1 : 0);
+
+        if (totalPending === 0) return null;
+
+        return (
+          <div className="w-full px-4 pt-1 pb-1 z-40">
+            <div 
+              onClick={() => {
+                sound.playPowerup();
+                setScreen('home');
+                const el = document.getElementById('base-builder-hub');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="mx-auto max-w-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-white rounded-2xl px-4 py-2 shadow-md flex items-center justify-between cursor-pointer hover:scale-[1.01] transition-all border border-amber-300/40 animate-pulse"
+            >
+              <div className="flex items-center gap-2">
+                <span className="p-1 rounded-lg bg-white/20 text-white font-bold text-xs flex items-center gap-1">
+                  🎁 {totalPending}
+                </span>
+                <span className="font-sans font-extrabold text-xs tracking-tight">
+                  {lang === 'id' 
+                    ? `${totalPending} Hadiah Menunggu Diklaim! (${pendingQuestsCount} Misi${streakPending ? ', 1 Streak' : ''})` 
+                    : `${totalPending} Pending Reward${totalPending > 1 ? 's' : ''} Ready! (${pendingQuestsCount} Quest${streakPending ? ', 1 Streak' : ''})`}
+                </span>
+              </div>
+              <span className="font-mono text-[10px] font-black uppercase tracking-wider bg-white/20 hover:bg-white/30 px-2.5 py-1 rounded-xl text-white border border-white/30">
+                {lang === 'id' ? 'KLAIM SEKARANG ⚡' : 'CLAIM NOW ⚡'}
+              </span>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* FULL SCREEN OVERLAY MENU CARD */}
       <AnimatePresence>
         {isMenuOpen && (
@@ -324,7 +521,7 @@ export default function App() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMenuOpen(false)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-md"
+              className="absolute inset-0 bg-[#061d33]/20 backdrop-blur-sm"
             />
 
             {/* Menu Card */}
@@ -333,27 +530,27 @@ export default function App() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-              className="relative w-full max-w-sm bg-[#0A0A0A]/90 backdrop-blur-[24px] rounded-[32px] shadow-[0_25px_60px_rgba(0,82,255,0.25)] flex flex-col p-6 font-sans border border-white/10 z-10 max-h-[calc(100vh-2.5rem)] overflow-y-auto scrollbar-none text-left text-white"
+              className="relative w-full max-w-sm bg-white/75 backdrop-blur-[20px] rounded-[32px] shadow-[0_15px_45px_rgba(6,29,51,0.08)] flex flex-col p-6 font-sans border border-cerulean-sky/15 z-10 max-h-[calc(100vh-2.5rem)] overflow-y-auto scrollbar-none text-left text-deep-navy"
             >
               {/* Header inside Menu Card */}
               <div className="flex items-center justify-between mb-6 select-none">
                 <div className="flex items-center gap-2.5">
-                  <div className="relative w-8 h-8 rounded-full border border-white/20 bg-[#0052FF] flex items-center justify-center shadow-sm">
+                  <div className="relative w-8 h-8 rounded-full border border-cerulean-sky/15 bg-[#0052FF] flex items-center justify-center shadow-sm">
                     <span className="font-serif italic font-extrabold text-xs text-white">B</span>
                     <span className="font-mono font-bold text-[8px] text-white relative -top-1">20</span>
                   </div>
                   <div className="flex flex-col text-left">
-                    <span className="font-serif font-extrabold text-sm tracking-wide leading-tight text-white">
+                    <span className="font-serif font-extrabold text-sm tracking-wide leading-tight text-deep-navy">
                       Find Your Way to B20
                     </span>
-                    <span className="block text-[8px] font-mono text-white/70 uppercase tracking-widest leading-none mt-0.5">
+                    <span className="block text-[8px] font-mono text-deep-navy/70 uppercase tracking-widest leading-none mt-0.5">
                       {translations[lang].header.subtitle}
                     </span>
                   </div>
                 </div>
                 <button
                   onClick={() => { sound.playMove(); setIsMenuOpen(false); }}
-                  className="p-1.5 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition cursor-pointer"
+                  className="p-1.5 rounded-full hover:bg-deep-navy/5 text-deep-navy/70 hover:text-deep-navy transition cursor-pointer"
                 >
                   <X size={18} />
                 </button>
@@ -363,10 +560,10 @@ export default function App() {
               <div className="flex flex-col gap-4 mb-6 text-left">
                 {/* LANGUAGE SECTION */}
                 <div className="flex flex-col select-none">
-                  <div className="text-[10px] font-mono tracking-widest text-white/70 uppercase mb-2">
+                  <div className="text-[10px] font-mono tracking-widest text-deep-navy/60 uppercase mb-2">
                     LANGUAGE / BAHASA
                   </div>
-                  <div className="grid grid-cols-4 bg-white/5 p-1 rounded-[16px] border border-white/10">
+                  <div className="grid grid-cols-4 bg-white/80 p-1 rounded-[16px] border border-cerulean-sky/15">
                     {(['en', 'id', 'zh', 'fr'] as Language[]).map((l) => (
                       <button
                         key={l}
@@ -378,7 +575,7 @@ export default function App() {
                         className={`py-2 text-xs font-bold rounded-[12px] transition-all cursor-pointer ${
                           lang === l
                             ? 'bg-[#0052FF] text-white shadow-sm'
-                            : 'text-white/80 hover:text-white hover:bg-white/5'
+                            : 'text-deep-navy/80 hover:text-deep-navy hover:bg-deep-navy/5'
                         }`}
                       >
                         {l.toUpperCase()}
@@ -388,7 +585,7 @@ export default function App() {
                 </div>
 
                 {/* Divider line */}
-                <div className="h-px bg-white/10 my-2 w-full" />
+                <div className="h-px bg-cerulean-sky/15 my-2 w-full" />
 
                 {/* Leaderboard option */}
                 <button
@@ -397,13 +594,13 @@ export default function App() {
                     setScreen('leaderboard');
                     setIsMenuOpen(false);
                   }}
-                  className="w-full bg-white/5 hover:bg-white/10 text-white rounded-[20px] py-4 px-5 flex items-center justify-between font-sans font-medium text-base transition-all duration-200 cursor-pointer border border-white/10"
+                  className="w-full bg-white hover:bg-cloud-white text-deep-navy rounded-[20px] py-4 px-5 flex items-center justify-between font-sans font-medium text-base transition-all duration-200 cursor-pointer border border-cerulean-sky/15 hover:border-cerulean-sky/30 shadow-sm"
                 >
                   <div className="flex items-center gap-3.5">
-                    <Trophy className="w-5 h-5 text-white" />
+                    <Trophy className="w-5 h-5 text-[#0052FF]" />
                     <span>{translations[lang].header.leaderboard}</span>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-white/60" />
+                  <ChevronRight className="w-4 h-4 text-deep-navy/40" />
                 </button>
 
                 {/* Mute sounds option */}
@@ -411,16 +608,16 @@ export default function App() {
                   onClick={() => {
                     handleToggleMute();
                   }}
-                  className="w-full bg-white/5 hover:bg-white/10 text-white rounded-[20px] py-4 px-5 flex items-center gap-3.5 font-sans font-medium text-base transition-all duration-200 cursor-pointer text-left border border-white/10"
+                  className="w-full bg-white hover:bg-cloud-white text-deep-navy rounded-[20px] py-4 px-5 flex items-center gap-3.5 font-sans font-medium text-base transition-all duration-200 cursor-pointer text-left border border-cerulean-sky/15 hover:border-cerulean-sky/30 shadow-sm"
                 >
                   {isMuted ? (
                     <>
-                      <VolumeX className="w-5 h-5 text-white" />
+                      <VolumeX className="w-5 h-5 text-warm-red" />
                       <span>{translations[lang].header.unmute}</span>
                     </>
                   ) : (
                     <>
-                      <Volume2 className="w-5 h-5 text-white" />
+                      <Volume2 className="w-5 h-5 text-[#0052FF]" />
                       <span>{translations[lang].header.mute}</span>
                     </>
                   )}
@@ -431,9 +628,9 @@ export default function App() {
                   onClick={() => {
                     handleToggleMusic();
                   }}
-                  className="w-full bg-white/5 hover:bg-white/10 text-white rounded-[20px] py-4 px-5 flex items-center gap-3.5 font-sans font-medium text-base transition-all duration-200 cursor-pointer text-left border border-white/10"
+                  className="w-full bg-white hover:bg-cloud-white text-deep-navy rounded-[20px] py-4 px-5 flex items-center gap-3.5 font-sans font-medium text-base transition-all duration-200 cursor-pointer text-left border border-cerulean-sky/15 hover:border-cerulean-sky/30 shadow-sm"
                 >
-                  <Music className={`w-5 h-5 text-white ${isMusicOn ? 'animate-spin' : ''}`} style={isMusicOn ? { animationDuration: '4s' } : undefined} />
+                  <Music className={`w-5 h-5 text-[#0052FF] ${isMusicOn ? 'animate-spin' : ''}`} style={isMusicOn ? { animationDuration: '4s' } : undefined} />
                   <span>{isMusicOn ? translations[lang].header.music_off : translations[lang].header.music_on}</span>
                 </button>
 
@@ -453,7 +650,7 @@ export default function App() {
                     boardEl.scrollIntoView({ behavior: 'smooth' });
                   }
                 }}
-                className="w-full bg-[#0052FF] text-white hover:bg-[#0052FF]/90 active:scale-[0.98] rounded-[20px] py-4 px-5 font-sans font-bold text-sm flex items-center justify-center gap-2 shadow-[0_4px_20px_rgba(0,82,255,0.25)] transition-all duration-200 cursor-pointer border border-white/10"
+                className="w-full bg-[#0052FF] text-white hover:bg-[#0052FF]/90 active:scale-[0.98] rounded-[20px] py-4 px-5 font-sans font-bold text-sm flex items-center justify-center gap-2 shadow-[0_8px_25px_rgba(0,82,255,0.2)] hover:shadow-[0_12px_30px_rgba(0,82,255,0.3)] transition-all duration-200 cursor-pointer border border-white/10"
               >
                 <span>Mulai Perjalanan (Start Journey)</span>
               </button>
@@ -749,7 +946,14 @@ export default function App() {
               className="w-full flex flex-col items-center"
             >
               {/* Onboarding Widget with nested builder start form */}
-              <Onboarding onStart={handleStartGame} lang={lang} theme="light" specialTokens={specialTokens} />
+              <Onboarding
+                onStart={handleStartGame}
+                onQuickPlay={() => handleQuickPlay()}
+                campaignLevel={campaignLevel}
+                lang={lang}
+                theme="light"
+                specialTokens={specialTokens}
+              />
 
               {/* LEVEL CONFIGURATION CARDS (Difficulty selector) */}
               <div className="w-full max-w-2xl px-4 mt-2">
@@ -764,7 +968,7 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => { sound.playMove(); setGameMode('campaign'); }}
-                      className={`flex-1 py-2 text-xs font-sans font-bold rounded-lg transition-all cursor-pointer ${
+                      className={`flex-1 py-3 text-xs font-sans font-bold rounded-lg transition-all cursor-pointer min-h-[44px] ${
                         gameMode === 'campaign'
                           ? 'cora-btn-primary shadow-sm'
                           : 'text-deep-navy/60 hover:text-deep-navy'
@@ -775,7 +979,7 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => { sound.playMove(); setGameMode('classic'); }}
-                      className={`flex-1 py-2 text-xs font-sans font-bold rounded-lg transition-all cursor-pointer ${
+                      className={`flex-1 py-3 text-xs font-sans font-bold rounded-lg transition-all cursor-pointer min-h-[44px] ${
                         gameMode === 'classic'
                           ? 'cora-btn-primary shadow-sm'
                           : 'text-deep-navy/60 hover:text-deep-navy'
@@ -874,7 +1078,7 @@ export default function App() {
                               sound.playMove();
                               setCampaignLevel(prev => prev - 1);
                             }}
-                            className={`flex-1 py-2.5 rounded-xl text-xs font-sans font-bold border transition-all flex items-center justify-center gap-1 select-none cursor-pointer ${
+                            className={`flex-1 py-3 rounded-xl text-xs font-sans font-bold border transition-all flex items-center justify-center gap-1 select-none cursor-pointer min-h-[44px] ${
                               campaignLevel <= 1
                                 ? 'bg-cloud-white border-deep-navy/5 text-deep-navy/20 cursor-not-allowed'
                                 : 'bg-white border-deep-navy/10 text-deep-navy hover:bg-cloud-white hover:border-deep-navy/30'
@@ -889,7 +1093,7 @@ export default function App() {
                               sound.playMove();
                               setCampaignLevel(prev => prev + 1);
                             }}
-                            className={`flex-1 py-2.5 rounded-xl text-xs font-sans font-bold border transition-all flex items-center justify-center gap-1 select-none cursor-pointer ${
+                            className={`flex-1 py-3 rounded-xl text-xs font-sans font-bold border transition-all flex items-center justify-center gap-1 select-none cursor-pointer min-h-[44px] ${
                               campaignLevel >= unlockedLevel || campaignLevel >= 1000
                                 ? 'bg-cloud-white border-deep-navy/5 text-deep-navy/20 cursor-not-allowed'
                                 : 'bg-white border-deep-navy/10 text-deep-navy hover:bg-cloud-white hover:border-deep-navy/30'
@@ -1033,8 +1237,6 @@ export default function App() {
               {/* BASE BUILDER HUB (FAUCET, QUESTS, PROFILE STYLES) */}
               <BaseHub
                 lang={lang}
-                specialTokens={specialTokens}
-                setSpecialTokens={setSpecialTokens}
                 l2Theme={l2Theme}
                 setL2Theme={setL2Theme}
                 quests={quests}
@@ -1044,6 +1246,8 @@ export default function App() {
                 setFaucetClaimStatus={setFaucetClaimStatus}
                 faucetTxHash={faucetTxHash}
                 setFaucetTxHash={setFaucetTxHash}
+                onClaimQuestReward={handleClaimQuestReward}
+                onQuickPlay={() => handleQuickPlay()}
               />
             </motion.div>
           )}
@@ -1066,8 +1270,6 @@ export default function App() {
                 onBackToMenu={handleBackToMenu}
                 lang={lang}
                 theme="light"
-                specialTokens={specialTokens}
-                setSpecialTokens={setSpecialTokens}
                 l2Theme={l2Theme}
                 onQuestProgress={handleQuestProgress}
               />

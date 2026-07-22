@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { ScoreEntry, Difficulty, BADGES } from '../types';
-import { Trophy, Trash2, Award, ArrowLeft, Shield, Share2, CheckCircle, Zap } from 'lucide-react';
+import { achievementService } from '../services/achievementService';
+import { socialService } from '../services/socialService';
+import { Trophy, Trash2, Award, ArrowLeft, Shield, Share2, CheckCircle, Zap, Swords, Target, Clock, TrendingUp, Flame, Medal } from 'lucide-react';
 import { sound } from './SoundEngine';
 import { Language, translations } from '../lib/i18n';
+import { usePlayer } from '../context/PlayerContext';
 
 // Seed some famous Based/Ethereum profiles to make the scoreboard instantly feel competitive and premium!
 const SEED_SCORES: ScoreEntry[] = [
@@ -83,6 +86,7 @@ interface LeaderboardProps {
 }
 
 export default function Leaderboard({ onBackToMenu, currentDifficulty, playerName, lang }: LeaderboardProps) {
+  const { addReputation } = usePlayer();
   const [scores, setScores] = useState<ScoreEntry[]>([]);
   const [filter, setFilter] = useState<Difficulty | 'all'>('all');
   const [lastRunStats, setLastRunStats] = useState<ScoreEntry | null>(null);
@@ -101,15 +105,27 @@ export default function Leaderboard({ onBackToMenu, currentDifficulty, playerNam
 
   useEffect(() => {
     const localScores = localStorage.getItem('base_maze_scores');
+    let loadedScores = SEED_SCORES;
     if (localScores) {
       try {
-        setScores(JSON.parse(localScores));
+        loadedScores = JSON.parse(localScores);
+        setScores(loadedScores);
       } catch (e) {
         setScores(SEED_SCORES);
       }
     } else {
       localStorage.setItem('base_maze_scores', JSON.stringify(SEED_SCORES));
       setScores(SEED_SCORES);
+    }
+
+    // Check for Leaderboard Participation Reward (+15)
+    if (activePlayerName) {
+      const hasScoreEntry = loadedScores.some(s => s.name && s.name.trim() === activePlayerName.trim() && !(s.id && typeof s.id === 'string' && s.id.startsWith('seed-')));
+      const alreadyClaimed = localStorage.getItem('base_maze_reputation_leaderboard_participated') === 'true';
+      if (hasScoreEntry && !alreadyClaimed) {
+        addReputation(15);
+        localStorage.setItem('base_maze_reputation_leaderboard_participated', 'true');
+      }
     }
 
     const lastRun = localStorage.getItem('base_maze_last_run_stats');
@@ -359,6 +375,258 @@ export default function Leaderboard({ onBackToMenu, currentDifficulty, playerNam
         </button>
       </div>
 
+      {/* LIGHTWEIGHT SOCIAL LAYER (Rival System • Personal Best • Weekly Competition • Champions Podium) */}
+      {(() => {
+        const activeName = playerName || localStorage.getItem('base_maze_player_name') || '';
+        const rival = socialService.getRival(scores, activeName);
+        const pb = socialService.getPersonalBest(scores, activeName);
+        const weekly = socialService.getWeeklyCompetitionStatus();
+        const alerts = socialService.getRivalAlerts(scores, activeName);
+        const topPerformers = socialService.getWeeklyTopPerformers(scores, activeName);
+        const pbOpps = socialService.getPersonalBestOpportunities(scores, activeName);
+
+        return (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-2xl p-4 mb-6 bg-gradient-to-br from-[#0F172A] via-[#1E293B] to-[#0B132B] border border-[#0052FF]/30 text-white shadow-xl font-sans space-y-3"
+          >
+            {/* Widget Top Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-white/10">
+              <div className="flex items-center gap-2">
+                <div className="p-1 rounded-lg bg-[#0052FF]/20 text-[#0052FF] border border-[#0052FF]/30">
+                  <Swords size={15} />
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold font-mono uppercase text-white tracking-wider leading-none">
+                    {lang === 'id' ? 'Klub Persaingan & Rival' : 'Social Rivalry & Competition Hub'}
+                  </h3>
+                  <p className="text-[9px] text-slate-400 font-mono leading-none mt-0.5">
+                    {lang === 'id' ? 'Sistem Rival, Rekor Pribadi & Sesi Mingguan' : 'Rival System • Personal Best • Weekly Competition'}
+                  </p>
+                </div>
+              </div>
+              <span className="text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full flex items-center gap-1">
+                <Flame size={10} className="text-amber-400 animate-pulse" />
+                <span>WEEK {weekly.weekNumber}</span>
+              </span>
+            </div>
+
+            {/* Active Rival Alerts Banner (if present) */}
+            {alerts.length > 0 && (
+              <div className="space-y-1.5 pt-1">
+                {alerts.map(a => (
+                  <div
+                    key={a.id}
+                    className={`p-2.5 rounded-xl border flex items-center justify-between text-xs font-mono ${
+                      a.severity === 'high'
+                        ? 'bg-rose-500/20 border-rose-500/40 text-rose-200'
+                        : a.severity === 'medium'
+                        ? 'bg-amber-500/20 border-amber-500/40 text-amber-200'
+                        : 'bg-blue-500/20 border-blue-500/40 text-blue-200'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">{a.severity === 'high' ? '🚨' : a.severity === 'medium' ? '⚡' : '🎯'}</span>
+                      <div>
+                        <span className="font-bold block leading-tight">{lang === 'id' ? a.titleId : a.titleEn}</span>
+                        <span className="text-[10px] opacity-80 leading-snug block mt-0.5">
+                          {lang === 'id' ? a.messageId : a.messageEn}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-[9px] font-mono font-bold px-2 py-1 rounded bg-black/30 border border-white/10 uppercase shrink-0">
+                      #{a.rivalRank} {a.rivalName}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* 3 Core Pillars */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+              {/* Pillar 1: Rival System */}
+              <div className="p-3 rounded-xl bg-white/5 border border-white/10 flex flex-col justify-between relative overflow-hidden">
+                <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
+                  <span className="flex items-center gap-1 font-bold text-blue-400 uppercase">
+                    <Target size={12} />
+                    {lang === 'id' ? 'Target Rival' : 'Rival Target'}
+                  </span>
+                  <span className="text-[8px] bg-blue-500/20 text-blue-300 px-1.5 py-0.2 rounded border border-blue-500/30 font-bold">
+                    #{rival?.rank || 1}
+                  </span>
+                </div>
+
+                <div className="my-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-lg">{rival?.avatarEmoji || '🎯'}</span>
+                    <span className="font-bold text-sm text-white truncate max-w-[130px]" title={rival?.name}>
+                      {rival?.name || 'vitalik.eth'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1 text-[11px] font-mono">
+                    <span className="text-slate-400">{lang === 'id' ? 'Selisih:' : 'Gap:'}</span>
+                    <span className="font-bold text-amber-300">
+                      -{rival?.gapTime ? rival.gapTime.toFixed(2) : '0.50'}s
+                    </span>
+                    <span className="text-slate-500">•</span>
+                    <span className="text-emerald-400 font-bold">
+                      {rival?.tps ? rival.tps.toFixed(0) : '1000'} TPS
+                    </span>
+                  </div>
+                </div>
+
+                <div className="text-[9px] font-mono text-slate-400 bg-black/20 p-1.5 rounded border border-white/5 flex items-center justify-between">
+                  <span>{lang === 'id' ? 'Tantang Waktu' : 'Challenge Time'}</span>
+                  <span className="text-blue-300 font-bold">{rival?.time ? rival.time.toFixed(2) : '10.00'}s</span>
+                </div>
+              </div>
+
+              {/* Pillar 2: Personal Best */}
+              <div className="p-3 rounded-xl bg-white/5 border border-white/10 flex flex-col justify-between">
+                <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
+                  <span className="flex items-center gap-1 font-bold text-purple-400 uppercase">
+                    <TrendingUp size={12} />
+                    {lang === 'id' ? 'Rekor Terbaik (PB)' : 'Personal Best'}
+                  </span>
+                  <span className="text-[8px] bg-purple-500/20 text-purple-300 px-1.5 py-0.2 rounded border border-purple-500/30 font-bold">
+                    {pb.totalRuns} RUNS
+                  </span>
+                </div>
+
+                <div className="my-2 space-y-1 font-mono">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-400">{lang === 'id' ? 'Waktu Terbaik:' : 'Best Time:'}</span>
+                    <span className="font-extrabold text-white">
+                      {pb.bestTime ? `${pb.bestTime.toFixed(2)}s` : 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-400">{lang === 'id' ? 'Throughput Puncak:' : 'Peak TPS:'}</span>
+                    <span className="font-extrabold text-purple-300">
+                      {pb.bestTps ? `${pb.bestTps.toFixed(1)} TPS` : 'N/A'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="text-[9px] font-mono text-slate-400 bg-black/20 p-1.5 rounded border border-white/5 flex items-center justify-between">
+                  <span>{lang === 'id' ? 'Mode Favorit' : 'Fav Mode'}</span>
+                  <span className="text-purple-300 font-bold uppercase">{pb.favDifficulty}</span>
+                </div>
+              </div>
+
+              {/* Pillar 3: Weekly Competition */}
+              <div className="p-3 rounded-xl bg-white/5 border border-white/10 flex flex-col justify-between">
+                <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
+                  <span className="flex items-center gap-1 font-bold text-amber-400 uppercase">
+                    <Clock size={12} />
+                    {lang === 'id' ? 'Kompetisi Mingguan' : 'Weekly Competition'}
+                  </span>
+                  <span className="text-[8px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded border border-amber-500/30 font-bold">
+                    {weekly.daysRemaining}d {weekly.hoursRemaining}h LEFT
+                  </span>
+                </div>
+
+                <div className="my-2 space-y-1 font-mono text-[10px]">
+                  <div className="flex items-center gap-1 text-slate-300">
+                    <Medal size={11} className="text-amber-400 flex-shrink-0" />
+                    <span>Top 1: <strong className="text-amber-300">{weekly.rewards.top1}</strong></span>
+                  </div>
+                  <div className="flex items-center gap-1 text-slate-300">
+                    <Award size={11} className="text-slate-300 flex-shrink-0" />
+                    <span>Top 3: <strong className="text-slate-200">{weekly.rewards.top3}</strong></span>
+                  </div>
+                </div>
+
+                <div className="text-[9px] font-mono text-slate-400 bg-black/20 p-1.5 rounded border border-white/5 flex items-center justify-between">
+                  <span>{lang === 'id' ? 'Berakhir Pada' : 'Sprint Resets'}</span>
+                  <span className="text-amber-300 font-bold">{weekly.endDateString}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Weekly Champions Podium */}
+            {topPerformers.length > 0 && (
+              <div className="pt-2 border-t border-white/10">
+                <div className="flex items-center justify-between mb-2 text-[10px] font-mono text-slate-400">
+                  <span className="flex items-center gap-1.5 font-bold text-amber-300 uppercase">
+                    <Trophy size={13} className="text-amber-400" />
+                    {lang === 'id' ? 'Podium Juara Mingguan' : 'Weekly Champions Podium'}
+                  </span>
+                  <span className="text-[8px] text-slate-400">
+                    {lang === 'id' ? '3 Teratas Waktu Terbaik' : 'Top 3 Best Times'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  {topPerformers.map(p => (
+                    <div
+                      key={p.rank}
+                      className={`p-2 rounded-xl border flex flex-col items-center text-center font-mono ${
+                        p.rank === 1
+                          ? 'bg-gradient-to-b from-amber-500/20 to-amber-900/20 border-amber-500/40 text-amber-200'
+                          : p.rank === 2
+                          ? 'bg-gradient-to-b from-slate-400/20 to-slate-800/20 border-slate-400/40 text-slate-200'
+                          : 'bg-gradient-to-b from-amber-700/20 to-amber-950/20 border-amber-700/40 text-amber-300'
+                      }`}
+                    >
+                      <span className="text-xl my-0.5">{p.avatarEmoji}</span>
+                      <span className="font-bold text-[11px] truncate max-w-full px-1" title={p.name}>
+                        {p.name}
+                      </span>
+                      <span className="text-[9px] opacity-80 mt-0.5">{p.time.toFixed(2)}s ({p.tps.toFixed(0)} TPS)</span>
+                      <span className="text-[8px] mt-1 font-extrabold uppercase px-1.5 py-0.5 rounded bg-black/40 border border-white/10">
+                        {p.badge}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Personal Best Opportunities */}
+            {pbOpps.length > 0 && (
+              <div className="pt-2 border-t border-white/10">
+                <div className="flex items-center justify-between mb-2 text-[10px] font-mono text-slate-400">
+                  <span className="flex items-center gap-1.5 font-bold text-purple-300 uppercase">
+                    <Zap size={13} className="text-purple-400" />
+                    {lang === 'id' ? 'Target Rekor Pribadi (PB)' : 'Personal Best Target Opportunities'}
+                  </span>
+                  <span className="text-[8px] text-purple-300/80">
+                    {lang === 'id' ? 'Klaim Bonus XP saat Tembus' : 'Claim XP Bonus on Breakthrough'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10px] font-mono">
+                  {pbOpps.map(opp => (
+                    <div
+                      key={opp.difficulty}
+                      className="p-2.5 rounded-xl bg-purple-950/30 border border-purple-500/25 flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between text-purple-300 font-bold uppercase text-[9px] mb-1">
+                          <span>{opp.difficulty}</span>
+                          <span className="bg-purple-500/20 px-1.5 py-0.2 rounded border border-purple-500/30 text-purple-200">
+                            +{opp.rewardXp} XP
+                          </span>
+                        </div>
+                        <p className="text-slate-300 text-[9.5px] leading-tight">
+                          {lang === 'id' ? opp.descriptionId : opp.descriptionEn}
+                        </p>
+                      </div>
+                      <div className="mt-2 pt-1.5 border-t border-white/5 flex items-center justify-between text-[9px] text-slate-400">
+                        <span>{lang === 'id' ? 'Target Waktu:' : 'Target Time:'}</span>
+                        <span className="font-extrabold text-amber-300">{opp.targetTime.toFixed(2)}s</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </motion.div>
+        );
+      })()}
+
       {/* Recent Run Sharing Card */}
       {lastRunStats && (
         <motion.div
@@ -441,42 +709,137 @@ export default function Leaderboard({ onBackToMenu, currentDifficulty, playerNam
               {t.badge_system}
             </h2>
           </div>
-          {activePlayerName && (
-            <span className="text-[10px] font-mono border px-2.5 py-0.5 rounded-md bg-warm-red/5 text-warm-red border-warm-red/20 font-bold">
-              {t.progress_text.replace('{name}', activePlayerName).replace('{unlocked}', String(userUnlockedBadges.size)).replace('{total}', String(BADGES.length))}
-            </span>
-          )}
+          {activePlayerName && (() => {
+            const achievements = achievementService.getAchievements();
+            const unlockedCount = achievements.filter(a => a.unlocked).length;
+            return (
+              <span className="text-[10px] font-mono border px-2.5 py-0.5 rounded-md bg-warm-red/5 text-warm-red border-warm-red/20 font-bold">
+                {t.progress_text.replace('{name}', activePlayerName).replace('{unlocked}', String(unlockedCount)).replace('{total}', String(achievements.length))}
+              </span>
+            );
+          })()}
         </div>
         
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-          {BADGES.map(badge => {
-            const isUnlocked = userUnlockedBadges.has(badge.id);
-            const localizedBadge = translations[lang].badges[badge.id] || badge;
-            const cardStyles = getBadgeStyles(badge.id, isUnlocked);
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {achievementService.getAchievements().map(badge => {
+            const isUnlocked = badge.unlocked;
+            const localizedBadge = translations[lang].badges[badge.id] || { name: badge.title, description: badge.description };
+            
+            // Highlight newly unlocked achievements (from last run stats or unlocked very recently within 10 minutes)
+            const isNew = isUnlocked && (
+              (lastRunStats?.badges || []).includes(badge.id) ||
+              (badge.unlockedAt ? (Date.now() - new Date(badge.unlockedAt).getTime() < 10 * 60 * 1000) : false)
+            );
+
+            // Detailed styling depending on status and rarity
+            let rarityBg = '';
+            let rarityBadgeStyle = '';
+            let ringStyle = '';
+
+            if (isUnlocked) {
+              if (badge.rarity === 'Legendary') {
+                rarityBg = 'bg-amber-50/80 border-amber-300 text-amber-950 shadow-[0_4px_16px_rgba(245,158,11,0.06)]';
+                rarityBadgeStyle = 'bg-amber-100 text-amber-800 border-amber-200';
+                ringStyle = isNew ? 'ring-2 ring-amber-400 ring-offset-2 animate-pulse-ring' : 'hover:border-amber-400';
+              } else if (badge.rarity === 'Epic') {
+                rarityBg = 'bg-purple-50/80 border-purple-300 text-purple-950 shadow-[0_4px_16px_rgba(139,92,246,0.06)]';
+                rarityBadgeStyle = 'bg-purple-100 text-purple-800 border-purple-200';
+                ringStyle = isNew ? 'ring-2 ring-purple-400 ring-offset-2 animate-pulse-ring' : 'hover:border-purple-400';
+              } else if (badge.rarity === 'Rare') {
+                rarityBg = 'bg-blue-50/80 border-blue-300 text-blue-950 shadow-[0_4px_16px_rgba(59,130,246,0.06)]';
+                rarityBadgeStyle = 'bg-blue-100 text-blue-800 border-blue-200';
+                ringStyle = isNew ? 'ring-2 ring-blue-400 ring-offset-2 animate-pulse-ring' : 'hover:border-blue-400';
+              } else {
+                rarityBg = 'bg-slate-50/90 border-slate-200 text-slate-900 shadow-sm';
+                rarityBadgeStyle = 'bg-slate-100 border-slate-200 text-slate-700';
+                ringStyle = isNew ? 'ring-2 ring-slate-400 ring-offset-2 animate-pulse-ring' : 'hover:border-slate-300';
+              }
+            } else {
+              rarityBg = 'bg-white/40 border-slate-200/60 text-slate-400 opacity-70 grayscale-[20%]';
+              rarityBadgeStyle = 'bg-slate-100 border-slate-200 text-slate-400';
+              ringStyle = '';
+            }
+
+            const percent = Math.min(100, Math.round((badge.progress / badge.target) * 100));
 
             return (
               <div
                 key={badge.id}
-                className={`flex flex-col items-center justify-center p-4 rounded-xl border text-center transition-all duration-300 ${cardStyles} ${
-                  isUnlocked ? 'hover:scale-[1.03] shadow-sm' : ''
+                className={`flex flex-col relative p-4 rounded-xl border transition-all duration-300 ${rarityBg} ${ringStyle} ${
+                  isUnlocked ? 'hover:scale-[1.02]' : ''
                 }`}
               >
-                <span className={`text-2xl mb-1.5 filter ${isUnlocked ? '' : 'grayscale'}`}>
-                  {badge.emoji}
-                </span>
-                <span className="text-[11px] font-bold leading-none">
-                  {localizedBadge.name}
-                </span>
-                <span className="text-[9px] leading-tight mt-1.5 max-w-[120px] opacity-80">
-                  {localizedBadge.description}
-                </span>
-                <span className="text-[8px] font-mono mt-2.5 uppercase tracking-wider">
-                  {isUnlocked ? (
-                    <span className="text-emerald-600 font-bold">✓ {t.unlocked_status}</span>
-                  ) : (
-                    <span className="text-deep-navy/40">{t.locked_status}</span>
-                  )}
-                </span>
+                {/* NEW Overlay Badge */}
+                {isNew && (
+                  <span className="absolute -top-2.5 right-3 text-[8px] font-mono font-bold uppercase tracking-widest bg-amber-500 text-white px-2 py-0.5 rounded shadow-md animate-bounce flex items-center gap-0.5 z-10">
+                    ★ {lang === 'id' ? 'BARU' : 'NEW'}
+                  </span>
+                )}
+
+                {/* Top Row: Rarity & Category */}
+                <div className="flex items-center justify-between gap-2 mb-2.5">
+                  <span className={`text-[8px] uppercase tracking-wider font-mono font-bold px-1.5 py-0.5 rounded border leading-none ${rarityBadgeStyle}`}>
+                    {badge.rarity}
+                  </span>
+                  <span className="text-[8px] font-mono text-slate-500 bg-slate-100 dark:bg-slate-800/20 px-1.5 py-0.5 rounded border border-slate-200/20 leading-none">
+                    {badge.category}
+                  </span>
+                </div>
+
+                {/* Title & Description with Emoji */}
+                <div className="flex gap-2.5 items-start">
+                  <span className={`text-2xl mt-0.5 flex-shrink-0 filter ${isUnlocked ? '' : 'grayscale opacity-60'}`} role="img" aria-label={localizedBadge.name}>
+                    {badge.emoji}
+                  </span>
+                  <div className="text-left flex-grow">
+                    <h3 className={`text-xs font-bold leading-tight ${isUnlocked ? 'text-slate-900' : 'text-slate-500'}`}>
+                      {localizedBadge.name}
+                    </h3>
+                    <p className={`text-[10px] leading-snug mt-1 ${isUnlocked ? 'text-slate-600' : 'text-slate-400'}`}>
+                      {localizedBadge.description}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Rewards Indicators */}
+                <div className="flex flex-wrap gap-1.5 mt-2.5 pt-2 border-t border-slate-200/40">
+                  <span className="text-[8.5px] font-mono font-semibold text-amber-600 flex items-center gap-0.5">
+                    ✨ +{badge.rewardXp} XP
+                  </span>
+                  <span className="text-slate-300 text-[8.5px] font-mono">|</span>
+                  <span className="text-[8.5px] font-mono font-semibold text-blue-600 flex items-center gap-0.5">
+                    🛡️ +{badge.rewardReputation} REP
+                  </span>
+                </div>
+
+                {/* Progress bar */}
+                <div className="w-full mt-3 space-y-1">
+                  <div className="flex justify-between items-center text-[8px] font-mono text-slate-500">
+                    <span>
+                      {isUnlocked ? (
+                        <span className="text-emerald-600 font-bold flex items-center gap-0.5">
+                          ✓ {t.unlocked_status}
+                        </span>
+                      ) : (
+                        <span>{t.locked_status}</span>
+                      )}
+                    </span>
+                    <span className="font-semibold text-slate-600">
+                      {badge.progress.toLocaleString()} / {badge.target.toLocaleString()} ({percent}%)
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-200/60 h-1.5 rounded-full overflow-hidden border border-slate-300/15">
+                    <div 
+                      className="h-1.5 rounded-full transition-all duration-500" 
+                      style={{ 
+                        width: `${percent}%`,
+                        background: isUnlocked 
+                          ? 'linear-gradient(to right, #10B981, #059669)' 
+                          : 'linear-gradient(to right, #3B82F6, #2563EB)'
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
             );
           })}
@@ -486,10 +849,46 @@ export default function Leaderboard({ onBackToMenu, currentDifficulty, playerNam
       {/* Leaderboard Table */}
       <div className="rounded-2xl overflow-hidden cora-desk-card">
         {filteredScores.length === 0 ? (
-          <div className="text-center py-12 text-deep-navy/50 font-sans">
-            <Award size={48} className="mx-auto mb-3 opacity-40 text-warm-red" />
-            <p className="text-sm font-sans font-bold">{t.no_scores}</p>
-            <p className="text-xs font-mono mt-1 text-deep-navy/40">{t.no_scores_desc}</p>
+          <div className="text-center py-12 px-6 text-deep-navy font-sans bg-white/40 backdrop-blur-sm border-b border-deep-navy/5 flex flex-col items-center justify-center space-y-4">
+            <div className="w-14 h-14 rounded-full border border-dashed border-deep-navy/20 flex items-center justify-center text-deep-navy/60 bg-deep-navy/5 animate-pulse">
+              <Award size={24} />
+            </div>
+            
+            <div className="space-y-1 max-w-md">
+              <p className="text-sm font-sans font-bold text-deep-navy/90">{t.no_scores}</p>
+              <p className="text-xs font-mono text-deep-navy/60 leading-relaxed">{t.no_scores_desc}</p>
+              <p className="text-xs text-deep-navy/70 italic leading-relaxed pt-1">
+                {lang === 'id' 
+                  ? '“Papan peringkat adalah tempat legenda menulis bukti kerja mereka.”' 
+                  : '“The leaderboard is where legends commit their proof of optimization.”'}
+              </p>
+            </div>
+
+            <div className="bg-white/60 border border-deep-navy/5 rounded-xl p-3.5 w-full max-w-sm text-left space-y-2 shadow-sm">
+              <span className="text-[9px] font-mono font-bold text-deep-navy/60 uppercase tracking-wider block">
+                {lang === 'id' ? 'Rekomendasi Tindakan:' : 'Recommended Action:'}
+              </span>
+              <p className="text-[11px] text-deep-navy/80 leading-relaxed">
+                {lang === 'id'
+                  ? 'Mainkan labirin dengan tingkat kesulitan baru, kurangi biaya gas seoptimal mungkin, lalu unggah rekor transaksi Anda untuk menantang ekosistem!'
+                  : 'Execute a fresh run under another difficulty, compress your gas consumption, and upload your block to challenge vitalik.eth!'
+                }
+              </p>
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => { sound.playMove(); onBackToMenu(); }}
+                  className="flex-1 py-1.5 text-[10px] font-mono bg-deep-navy hover:bg-deep-navy/90 text-white font-bold rounded-lg transition duration-150 cursor-pointer text-center shadow-sm"
+                >
+                  {lang === 'id' ? 'Kembali Bermain' : 'Go Start Playing'}
+                </button>
+                <button
+                  onClick={() => { sound.playMove(); setFilter('all'); }}
+                  className="px-3 py-1.5 text-[10px] font-mono bg-white/80 border border-deep-navy/10 hover:border-deep-navy/25 text-deep-navy/80 rounded-lg transition duration-150 cursor-pointer text-center"
+                >
+                  {lang === 'id' ? 'Reset Filter' : 'Reset Filters'}
+                </button>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="overflow-x-auto">

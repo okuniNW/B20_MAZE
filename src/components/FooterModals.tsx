@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Star, Send, Heart, Shield, FileText, CreditCard, Sparkles, Map, Check, ChevronRight } from 'lucide-react';
+import { X, Star, Send, Heart, Shield, FileText, CreditCard, Sparkles, Map, Check, ChevronRight, BarChart3, Activity, Clock, Users, Trophy, Target, Flame } from 'lucide-react';
 import { sound } from './SoundEngine';
+import { analyticsService } from '../services/analyticsService';
 
 interface FooterModalsProps {
   activeModal: string;
@@ -114,6 +115,12 @@ export default function FooterModals({ activeModal, onClose, lang }: FooterModal
       id: 'Portal Pelanggan',
       zh: '客户门户',
       fr: 'Portail Client'
+    },
+    analytics: {
+      en: 'Game Analytics & Performance Engine',
+      id: 'Analitik & Mesin Kinerja Game',
+      zh: '游戏分析与性能引擎',
+      fr: 'Moteur d\'Analyse du Jeu'
     }
   };
 
@@ -496,6 +503,128 @@ export default function FooterModals({ activeModal, onClose, lang }: FooterModal
               </div>
             </div>
           )}
+
+          {/* 7. ANALYTICS ENGINE */}
+          {activeModal === 'analytics' && (() => {
+            const summary = analyticsService.getAnalyticsSummary();
+            return (
+              <div className="space-y-4 text-left">
+                {/* Header status badge */}
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-[#0052FF]/5 border border-[#0052FF]/20">
+                  <div className="flex items-center gap-2">
+                    <Activity size={16} className="text-[#0052FF] animate-pulse" />
+                    <div>
+                      <h4 className="text-xs font-bold text-deep-navy font-mono uppercase">
+                        {lang === 'id' ? 'Pelacak Telemetri Game' : 'Live Game Telemetry'}
+                      </h4>
+                      <p className="text-[9px] text-slate-500 font-mono">
+                        {lang === 'id' ? 'Metrik Real-time & Sesi Aktif' : 'Real-time Metrics & Active Session Data'}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[9px] font-mono font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                    ONLINE
+                  </span>
+                </div>
+
+                {/* Grid 1: Core Usage Metrics */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                    <div className="flex items-center gap-1 text-[10px] text-slate-500 font-mono">
+                      <Users size={12} className="text-blue-500" />
+                      <span>{lang === 'id' ? 'Pengguna Aktif (DAU)' : 'Active Days (DAU)'}</span>
+                    </div>
+                    <div className="text-lg font-bold font-mono text-deep-navy mt-1">
+                      {summary.dauCount} {summary.dauCount === 1 ? 'Day' : 'Days'}
+                    </div>
+                    <div className="text-[8px] font-mono text-slate-400 mt-0.5 truncate">
+                      Last: {summary.dauDates[summary.dauDates.length - 1] || 'Today'}
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                    <div className="flex items-center gap-1 text-[10px] text-slate-500 font-mono">
+                      <Activity size={12} className="text-indigo-500" />
+                      <span>{lang === 'id' ? 'Jumlah Sesi' : 'Total Sessions'}</span>
+                    </div>
+                    <div className="text-lg font-bold font-mono text-deep-navy mt-1">
+                      {summary.totalSessions}
+                    </div>
+                    <div className="text-[8px] font-mono text-slate-400 mt-0.5">
+                      Cur: {summary.formattedCurrentSession}
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                    <div className="flex items-center gap-1 text-[10px] text-slate-500 font-mono">
+                      <Clock size={12} className="text-purple-500" />
+                      <span>{lang === 'id' ? 'Rata-rata Sesi' : 'Avg Session Length'}</span>
+                    </div>
+                    <div className="text-lg font-bold font-mono text-deep-navy mt-1">
+                      {summary.formattedAvgSession}
+                    </div>
+                    <div className="text-[8px] font-mono text-slate-400 mt-0.5">
+                      Total: {summary.formattedTotalPlaytime}
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                    <div className="flex items-center gap-1 text-[10px] text-slate-500 font-mono">
+                      <Trophy size={12} className="text-amber-500" />
+                      <span>{lang === 'id' ? 'Labirin Selesai' : 'Maze Completions'}</span>
+                    </div>
+                    <div className="text-lg font-bold font-mono text-deep-navy mt-1">
+                      {summary.mazeCompletions}
+                    </div>
+                    <div className="text-[8px] font-mono text-slate-400 mt-0.5">
+                      Beg: {summary.mazeCompletionsByDiff.beginner || 0} • Std: {summary.mazeCompletionsByDiff.standard || 0}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Grid 2: Engagement Rates */}
+                <div className="p-3 rounded-xl bg-[#061d33]/5 border border-[#061d33]/10 space-y-2.5">
+                  <div className="flex items-center justify-between text-xs font-mono">
+                    <span className="flex items-center gap-1.5 font-bold text-deep-navy">
+                      <Target size={13} className="text-emerald-600" />
+                      {lang === 'id' ? 'Tingkat Penyelesaian Misi' : 'Quest Completion Rate'}
+                    </span>
+                    <span className="font-extrabold text-emerald-700">{summary.questCompletionRate}%</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                    <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${summary.questCompletionRate}%` }} />
+                  </div>
+                  <div className="flex justify-between text-[9px] font-mono text-slate-500">
+                    <span>{summary.questsCompleted} {lang === 'id' ? 'selesai' : 'completed'}</span>
+                    <span>{summary.questsAssigned} {lang === 'id' ? 'ditugaskan' : 'assigned'}</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                  <div className="p-3 rounded-xl bg-purple-50 border border-purple-100 flex flex-col justify-between">
+                    <div className="flex items-center gap-1 text-[10px] text-purple-700 font-bold">
+                      <Sparkles size={12} />
+                      <span>{lang === 'id' ? 'Pencapaian Terbuka' : 'Achievements Unlocked'}</span>
+                    </div>
+                    <div className="text-xl font-extrabold text-purple-900 mt-2">
+                      {summary.achievementsUnlockedCount}
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-100 flex flex-col justify-between">
+                    <div className="flex items-center gap-1 text-[10px] text-amber-700 font-bold">
+                      <Flame size={12} />
+                      <span>{lang === 'id' ? 'Partisipasi Streak' : 'Streak Check-ins'}</span>
+                    </div>
+                    <div className="text-xl font-extrabold text-amber-900 mt-2">
+                      {summary.dailyStreakCheckins}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
         </div>
 

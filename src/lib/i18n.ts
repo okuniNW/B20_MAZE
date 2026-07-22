@@ -13,6 +13,7 @@ export interface TranslationDictionary {
     theme_light: string;
     theme_dark: string;
     menu: string;
+    quick_play: string;
   };
   news_ticker: string[];
   onboarding: {
@@ -110,6 +111,24 @@ export interface TranslationDictionary {
     reveal_map_tooltip: string;
   };
   badges: Record<string, { name: string; description: string }>;
+  glossary: {
+    reputation_title: string;
+    reputation_desc: string;
+    rank_title: string;
+    rank_desc: string;
+    season_title: string;
+    season_desc: string;
+    achievement_title: string;
+    achievement_desc: string;
+    bypass_key_title: string;
+    bypass_key_desc: string;
+    special_key_title: string;
+    special_key_desc: string;
+    node_id_title: string;
+    node_id_desc: string;
+    passport_title: string;
+    passport_desc: string;
+  };
 }
 
 export const translations: Record<Language, TranslationDictionary> = {
@@ -126,6 +145,7 @@ export const translations: Record<Language, TranslationDictionary> = {
       theme_light: "Light Mode",
       theme_dark: "Dark Mode",
       menu: "Menu",
+      quick_play: "Quick Play",
     },
     news_ticker: [
       "⚡ BASE FEES: Average transaction fees on the Base network are under $0.001 per tx thanks to EIP-4844 upgrade!",
@@ -238,6 +258,28 @@ export const translations: Record<Language, TranslationDictionary> = {
       'gas-optimizer': { name: "Gas Optimizer", description: "Super economic gas (<= 10 Gwei)" },
       'wall-breaker': { name: "Wall Breaker", description: "Smash a firewall wall" },
       'no-hints': { name: "No Hints", description: "Complete without route hints" },
+      'quest-apprentice': { name: "Quest Apprentice", description: "Complete 3 ecosystem quests" },
+      'elite-validator': { name: "Elite Validator", description: "Reach validator reputation 1000+" },
+      'leaderboard-contender': { name: "Leaderboard Contender", description: "Register your name on the Leaderboard" },
+      'seasonal-explorer': { name: "Seasonal Explorer", description: "Participate in the inaugural seasonal event" },
+    },
+    glossary: {
+      reputation_title: "Builder Reputation (REP)",
+      reputation_desc: "Earned by validating blocks (solving mazes) and completing daily quests. REP acts as your permanent standing and skill index in the developer network.",
+      rank_title: "Builder Rank",
+      rank_desc: "Your network tier class (Explorer, Validator, Architect, Master Builder). Your rank advances automatically as Reputation grows, unlocking elite seasonal badges and custom skins.",
+      season_title: "Seasonal Progression",
+      season_desc: "Time-limited competitive phases. Complete designated objectives (maze levels, reputation milestones) to earn rare vanity items and permanent status multipliers.",
+      achievement_title: "Milestone Achievements",
+      achievement_desc: "High-performance developer challenges (e.g. speedruns, extreme gas conservation). Unlocking them rewards permanent REP boost and Special Keys.",
+      bypass_key_title: "Validator Bypass Keys",
+      bypass_key_desc: "A temporary wall-smashing consumable discovered inside mazes. Walk directly into any firewall grid block to instantly crush it! Cannot be used outside active gameplay.",
+      special_key_title: "Ecosystem Special Keys",
+      special_key_desc: "A persistent account currency earned from level-ups, quests, and achievements. Spent in the Customizer Shop for custom node usernames and avatars, or for in-game Radar Scans.",
+      node_id_title: "Node ID / Address",
+      node_id_desc: "Your unique, immutable simulator node network identifier. It binds your customizable handle to your permanent account profile stats.",
+      passport_title: "Builder Passport",
+      passport_desc: "Your comprehensive on-chain developer identification profile. Houses all compiled statistics, personal records, levels, custom metadata, and collection badges.",
     },
   },
   id: {
@@ -253,6 +295,7 @@ export const translations: Record<Language, TranslationDictionary> = {
       theme_light: "Mode Terang",
       theme_dark: "Mode Gelap",
       menu: "Menu",
+      quick_play: "Main Langsung",
     },
     news_ticker: [
       "⚡ BASE FEES: Rata-rata biaya transaksi di jaringan Base di bawah $0.001 per tx berkat upgrade EIP-4844!",
@@ -365,6 +408,28 @@ export const translations: Record<Language, TranslationDictionary> = {
       'gas-optimizer': { name: "Gas Optimizer", description: "Gas super hemat (<= 10 Gwei)" },
       'wall-breaker': { name: "Wall Breaker", description: "Hancurkan dinding firewall" },
       'no-hints': { name: "No Hints", description: "Selesai tanpa petunjuk rute" },
+      'quest-apprentice': { name: "Quest Apprentice", description: "Selesaikan 3 quest ekosistem" },
+      'elite-validator': { name: "Elite Validator", description: "Capai reputasi validator 1000+" },
+      'leaderboard-contender': { name: "Leaderboard Contender", description: "Daftarkan nama Anda di Leaderboard" },
+      'seasonal-explorer': { name: "Seasonal Explorer", description: "Berpartisipasi dalam ajang musim perdana" },
+    },
+    glossary: {
+      reputation_title: "Reputasi Builder (REP)",
+      reputation_desc: "Diperoleh dengan memvalidasi blok (menyelesaikan labirin) dan misi harian. REP mewakili keterampilan developer keseluruhan dan kontribusi jaringan Anda.",
+      rank_title: "Peringkat Builder",
+      rank_desc: "Kelas posisi Anda (Explorer, Validator, Architect, Master Builder). Peringkat meningkat otomatis seiring reputasi, membuka manfaat musiman eksklusif.",
+      season_title: "Progres Musiman",
+      season_desc: "Fase kompetitif waktu terbatas. Selesaikan kriteria aktif (labirin, kenaikan level, akumulasi reputasi) untuk mengamankan skin terbatas.",
+      achievement_title: "Pencapaian Tonggak Sejarah",
+      achievement_desc: "Metrik performa utama (misal: speedrun, optimasi gas). Menyelesaikannya memberikan reputasi permanen dan Kunci Spesial berharga.",
+      bypass_key_title: "Kunci Bypass Validator",
+      bypass_key_desc: "Alat pendobrak tembok taktis yang hanya ditemukan dan digunakan selama gameplay labirin. Tabrak langsung tembok firewall untuk menghancurkannya!",
+      special_key_title: "Kunci Spesial Ekosistem",
+      special_key_desc: "Mata uang persisten yang diperoleh dari kenaikan level, misi harian, dan pencapaian. Digunakan di Toko Kustomisasi untuk nama/PFP atau Radar Peta.",
+      node_id_title: "ID Node",
+      node_id_desc: "Alamat unik dan pengenal pengenal sistem Anda pada jaringan subnet Layer-2 simulasian kami (Base L2).",
+      passport_title: "Paspor Builder",
+      passport_desc: "Identitas pengembang pusat Anda di Base. Menyimpan semua statistik permainan permanen, tingkat kemajuan, rekor pribadi, dan peringkat Anda.",
     },
   },
   zh: {
@@ -380,6 +445,7 @@ export const translations: Record<Language, TranslationDictionary> = {
       theme_light: "浅色模式",
       theme_dark: "深色模式",
       menu: "菜单",
+      quick_play: "快速游戏",
     },
     news_ticker: [
       "⚡ BASE 费率：得益于 EIP-4844 升级，Base 网络上的平均交易费用降至 $0.001 以下！",
@@ -492,6 +558,28 @@ export const translations: Record<Language, TranslationDictionary> = {
       'gas-optimizer': { name: "Gas 优化者", description: "超级节省 Gas (<= 10 Gwei)" },
       'wall-breaker': { name: "破墙者", description: "打破迷宫防火墙" },
       'no-hints': { name: "无提示通关", description: "不使用路线提示通关" },
+      'quest-apprentice': { name: "任务学徒", description: "完成 3 个生态任务" },
+      'elite-validator': { name: "精英验证者", description: "达到 1000+ 验证者声誉" },
+      'leaderboard-contender': { name: "排行榜竞争者", description: "在排行榜上注册您的名字" },
+      'seasonal-explorer': { name: "季度探索者", description: "参与首届季度性活动" },
+    },
+    glossary: {
+      reputation_title: "构建者声誉 (REP)",
+      reputation_desc: "通过验证区块（解决迷宫）和完成每日任务获得。REP 代表您的整体开发技能和网络贡献度。",
+      rank_title: "构建者等级",
+      rank_desc: "您的身份级别（探索者、验证者、架构师、大师构建者）。您的等级会随着声誉的增长自动提升，解锁专属季度奖励。",
+      season_title: "季度进度",
+      season_desc: "限时的竞争阶段。完成迷宫、等级提升和声誉积累等条件，在季度结束前解锁限时皮肤与永久加成。",
+      achievement_title: "徽章里程碑",
+      achievement_desc: "重大开发成就（如竞速通关、Gas 优化）。完成这些成就会提升网络地位并奖励宝贵的特殊钥匙。",
+      bypass_key_title: "验证者绕行密钥",
+      bypass_key_desc: "在迷宫中获取的临时消耗性道具。直接朝防火墙墙壁移动即可瞬间破墙！",
+      special_key_title: "生态特殊钥匙",
+      special_key_desc: "通过升级、每日任务和成就获得的通用货币。可在自定义商店中兑换用户名、PFP 图像，或在游戏内进行雷达扫描。",
+      node_id_title: "节点 ID / 地址",
+      node_id_desc: "您在模拟的 Layer-2 网络（Base L2）中拥有的唯一、永久的系统节点地址标识。",
+      passport_title: "构建者 Paspor",
+      passport_desc: "您在 Base 上的核心开发者身份。记录了您的永久游戏数据、等级进度、个人最佳记录和已解锁等级。",
     },
   },
   fr: {
@@ -507,6 +595,7 @@ export const translations: Record<Language, TranslationDictionary> = {
       theme_light: "Mode Clair",
       theme_dark: "Mode Sombre",
       menu: "Menu",
+      quick_play: "Jeu Rapide",
     },
     news_ticker: [
       "⚡ FRAIS BASE: Les frais de transaction moyens sur le réseau Base sont inférieurs à 0,001 $ par transaction grâce à l'upgrade EIP-4844 !",
@@ -619,6 +708,28 @@ export const translations: Record<Language, TranslationDictionary> = {
       'gas-optimizer': { name: "Optimiseur de Gas", description: "Gas ultra économique (<= 10 Gwei)" },
       'wall-breaker': { name: "Briseur de Murs", description: "Briser un pare-feu" },
       'no-hints': { name: "Sans Indices", description: "Terminer sans indices d'itinéraire" },
+      'quest-apprentice': { name: "Apprenti des Quêtes", description: "Terminer 3 quêtes de l'écosystème" },
+      'elite-validator': { name: "Élite Validateur", description: "Atteindre 1000+ de réputation de validateur" },
+      'leaderboard-contender': { name: "Compétiteur du Classement", description: "Enregistrer votre nom sur le Classement" },
+      'seasonal-explorer': { name: "Explorateur Saisonnier", description: "Participer à l'événement saisonnier inaugural" },
+    },
+    glossary: {
+      reputation_title: "Réputation de Builder (REP)",
+      reputation_desc: "Gagnée en validant des blocs (labyrinthes) et en complétant des missions. REP représente votre compétence globale et votre contribution au réseau.",
+      rank_title: "Rang de Builder",
+      rank_desc: "Votre classe de statut (Explorateur, Validateur, Architecte, Maître). Votre rang augmente automatiquement avec votre réputation, débloquant des cosmétiques exclusifs.",
+      season_title: "Progression Saisonnière",
+      season_desc: "Une phase compétitive à durée limitée. Remplissez les critères actifs (labyrinthes, gains de niveau, réputation) pour obtenir des récompenses exclusives.",
+      achievement_title: "Succès Historiques",
+      achievement_desc: "Métriques de performance majeures (ex: speedruns, optimisations gas). Les compléter confère une réputation permanente et des Clés Spéciales précieuses.",
+      bypass_key_title: "Clés de Contournement de Validateur",
+      bypass_key_desc: "Un consommable briseur de murs trouvé et utilisé uniquement dans le labyrinthe. Avancez directement dans un pare-feu pour le briser !",
+      special_key_title: "Clés Spéciales d'Écosystème",
+      special_key_desc: "Une monnaie persistante gagnée via les niveaux, quêtes et succès. Dépensez-les dans la boutique d'identité ou pour lancer des Radars.",
+      node_id_title: "ID de Nœud",
+      node_id_desc: "Votre identifiant réseau unique et permanent sur notre sous-réseau simulé de niveau 2 (Base L2).",
+      passport_title: "Passeport de Builder",
+      passport_desc: "Votre identité de développeur centrale sur Base. Contient toutes vos statistiques permanentes, niveaux de progression, records personnels et rangs.",
     },
   },
 };

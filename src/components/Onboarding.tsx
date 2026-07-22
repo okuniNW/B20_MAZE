@@ -6,12 +6,14 @@ import { Language, translations } from '../lib/i18n';
 
 interface OnboardingProps {
   onStart: (playerName: string) => void;
+  onQuickPlay?: () => void;
+  campaignLevel?: number;
   lang: Language;
   theme?: 'light' | 'dark';
   specialTokens: number;
 }
 
-export default function Onboarding({ onStart, lang, theme = 'light', specialTokens }: OnboardingProps) {
+export default function Onboarding({ onStart, onQuickPlay, campaignLevel = 1, lang, theme = 'light', specialTokens }: OnboardingProps) {
   const [name, setName] = useState(() => localStorage.getItem('base_maze_player_name') || '');
   const [error, setError] = useState('');
 
@@ -244,13 +246,33 @@ export default function Onboarding({ onStart, lang, theme = 'light', specialToke
           )}
         </div>
 
-        <button
-          type="submit"
-          className="w-full font-sans font-bold py-4 px-6 rounded-xl flex items-center justify-center gap-2 text-white bg-[#0052FF] hover:bg-[#0052FF]/95 active:scale-[0.99] shadow-[0_4px_20px_rgba(0,82,255,0.25)] hover:shadow-[0_8px_30px_rgba(0,82,255,0.4)] transition-all duration-300 group cursor-pointer border border-[#0052FF]/10"
-        >
-          {t.start_btn}
-          <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform text-white/90" />
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2.5">
+          <button
+            type="submit"
+            className="flex-1 font-sans font-bold py-4 px-6 rounded-xl flex items-center justify-center gap-2 text-white bg-[#0052FF] hover:bg-[#0052FF]/95 active:scale-[0.99] shadow-[0_4px_20px_rgba(0,82,255,0.25)] hover:shadow-[0_8px_30px_rgba(0,82,255,0.4)] transition-all duration-300 group cursor-pointer border border-[#0052FF]/10"
+          >
+            {t.start_btn}
+            <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform text-white/90" />
+          </button>
+          {onQuickPlay && (
+            <button
+              type="button"
+              onClick={() => {
+                sound.playPowerup();
+                onQuickPlay();
+              }}
+              className="py-4 px-5 rounded-xl font-sans font-extrabold text-xs tracking-wide bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-md shadow-amber-500/20 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer border border-white/20 whitespace-nowrap select-none"
+              title="Reach gameplay in under 1 second"
+            >
+              <Zap size={16} className="text-yellow-200 animate-pulse" />
+              <span>
+                {lang === 'id' 
+                  ? `⚡ MAIN CEPAT (LVL ${campaignLevel})` 
+                  : `⚡ QUICK PLAY (LVL ${campaignLevel})`}
+              </span>
+            </button>
+          )}
+        </div>
 
         {/* Form Footer Metrics */}
         <div className="grid grid-cols-3 gap-2 mt-6 text-[9px] font-mono border-t border-slate-100 pt-4 text-slate-400 select-none">

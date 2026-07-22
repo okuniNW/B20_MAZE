@@ -10,6 +10,10 @@ import {
   L2Theme
 } from '../types';
 import { L2_THEMES } from '../lib/themes';
+import { achievementService } from '../services/achievementService';
+import { analyticsService } from '../services/analyticsService';
+import { eventService } from '../services/eventService';
+import { socialService } from '../services/socialService';
 import {
   sound
 } from './SoundEngine';
@@ -35,6 +39,8 @@ import {
   Compass
 } from 'lucide-react';
 import { Language, translations } from '../lib/i18n';
+import { usePlayer } from '../context/PlayerContext';
+import { PlayerAvatar } from './PlayerAvatar';
 
 interface Particle {
   id: number;
@@ -57,8 +63,6 @@ interface MazeBoardProps {
   onBackToMenu: () => void;
   lang: Language;
   theme?: 'light' | 'dark';
-  specialTokens: number;
-  setSpecialTokens: React.Dispatch<React.SetStateAction<number>>;
   l2Theme?: L2Theme;
   onQuestProgress?: (questId: string, amount?: number) => void;
 }
@@ -73,11 +77,18 @@ export default function MazeBoard({
   onBackToMenu,
   lang,
   theme = 'dark',
-  specialTokens,
-  setSpecialTokens,
   l2Theme = 'base-blue',
-  onQuestProgress
+  onQuestProgress,
 }: MazeBoardProps) {
+  const {
+    addXp,
+    specialTokens,
+    setSpecialTokens,
+    customUsername,
+    customPfp,
+    activeSkin,
+    addReputation,
+  } = usePlayer();
   const [zenBlocksConquered, setZenBlocksConquered] = useState(() => {
     return Number(localStorage.getItem('base_maze_zen_blocks_conquered') || '0');
   });
@@ -1065,7 +1076,7 @@ export default function MazeBoard({
         // Calculate score for this level
         const thisLevelScore = Math.max(50, Math.round(computedTPS * 10 - finalGasGwei));
         // XP: 150 for campaign level, 100 for classic
-        const thisLevelXp = isCampaign ? 150 : 100;
+        const baseLevelXp = isCampaign ? 150 : 100;
 
         localStorage.setItem('base_maze_profile_total_moves', String(prevTotalMoves + stats.transactionsMade));
         localStorage.setItem('base_maze_profile_total_time', String(prevTotalTime + Math.round(timeToComplete)));
@@ -1073,7 +1084,45 @@ export default function MazeBoard({
         localStorage.setItem('base_maze_profile_firewalls_destroyed', String(prevFirewalls + (hasUsedBypass ? 1 : 0)));
         localStorage.setItem('base_maze_profile_score', String(prevScore + thisLevelScore));
         localStorage.setItem('base_maze_profile_win_streak', String(prevWinStreak + 1));
-        localStorage.setItem('base_maze_profile_xp', String(prevXp + thisLevelXp));
+
+        // Calculate newly unlocked achievements (badges) for Builder Reputation (+50 each)
+        let previouslyUnlockedBadges = new Set<string>();
+        const savedScoresForRep = localStorage.getItem('base_maze_scores');
+        if (savedScoresForRep) {
+          try {
+            const parsedScores = JSON.parse(savedScoresForRep);
+            if (Array.isArray(parsedScores)) {
+              parsedScores.forEach((s: any) => {
+                // Ignore seed entries if desired, but to be safe against all previous user runs
+                if (s.badges && Array.isArray(s.badges)) {
+                  s.badges.forEach((b: string) => previouslyUnlockedBadges.add(b));
+                }
+              });
+            }
+          } catch (e) {
+            console.error("Error parsing previous scores for reputation calculation:", e);
+          }
+        }
+
+        let newBadgesUnlockedCount = 0;
+        currentEarnedBadges.forEach((badgeId: string) => {
+          if (!previouslyUnlockedBadges.has(badgeId)) {
+            newBadgesUnlockedCount++;
+          }
+          // Explicitly register and unlock in the new Achievement Engine
+          achievementService.unlockAchievement(badgeId);
+        });
+
+        const mazeRepReward = 10; // +10 for Maze completion
+        const achievementRepReward = newBadgesUnlockedCount * 50; // +50 per new achievement unlock
+        const baseRepReward = mazeRepReward + achievementRepReward;
+
+        // Apply Event Framework Multipliers
+        const eventBonuses = eventService.calculateEventBonuses(baseLevelXp, baseRepReward, timeToComplete, difficulty);
+        addXp(eventBonuses.finalXp);
+        addReputation(eventBonuses.finalRep);
+
+        analyticsService.trackMazeCompletion(difficulty);
       } catch (e) {
         console.error("Error updating player profile stats", e);
       }
@@ -1089,6 +1138,19 @@ export default function MazeBoard({
         }
       }
       
+      const pbEvaluation = socialService.checkAndRecordPersonalBest(result, currentScores, playerName);
+      if (pbEvaluation.isNewPbTime || pbEvaluation.isNewPbTps || pbEvaluation.rivalSurpassed) {
+        localStorage.setItem('base_maze_last_pb_notice', JSON.stringify({
+          time: new Date().toISOString(),
+          isNewPbTime: pbEvaluation.isNewPbTime,
+          isNewPbTps: pbEvaluation.isNewPbTps,
+          gapImprovement: pbEvaluation.gapTimeImprovement,
+          rivalSurpassed: pbEvaluation.rivalSurpassed,
+          newRank: pbEvaluation.newRank,
+          difficulty
+        }));
+      }
+
       const updatedScores = [...currentScores, result].sort((a, b) => a.time - b.time);
       localStorage.setItem('base_maze_scores', JSON.stringify(updatedScores));
       localStorage.setItem('base_maze_last_run_stats', JSON.stringify(result));
@@ -1562,6 +1624,7 @@ export default function MazeBoard({
                   {/* Floating Player Token (Separate absolute element for fluid, unstretched, ultra-smooth movement) */}
                   {(() => {
                     const activeTheme = L2_THEMES[l2Theme] || L2_THEMES['base-blue'];
+
                     return (
                       <motion.div
                         className="absolute top-0 left-0 pointer-events-none z-20 flex items-center justify-center"
@@ -1598,19 +1661,20 @@ export default function MazeBoard({
                             rotate: { duration: 0.9, ease: "easeInOut" },
                             opacity: { duration: 0.9 }
                           }}
-                          className="w-[80%] h-[80%] aspect-square rounded-full border border-white flex items-center justify-center shadow-md transition-colors duration-300"
+                          className="w-[85%] h-[85%] aspect-square rounded-full border-2 border-white flex items-center justify-center shadow-md transition-colors duration-300 overflow-hidden"
                           style={{
                             backgroundColor: activeTheme.accentColor,
                             boxShadow: `0 8px 12px -3px ${activeTheme.accentColor}55, 0 4px 6px -4px ${activeTheme.accentColor}55`
                           }}
                         >
                           {/* Inner white circle */}
-                          <div className="w-[60%] h-[60%] bg-white rounded-full flex items-center justify-center">
-                            {/* Inner deep navy dot */}
-                            <div
-                              className="w-[45%] h-[45%] rounded-full animate-pulse transition-colors duration-300"
-                              style={{ backgroundColor: activeTheme.accentColor }}
-                            ></div>
+                          <div className="w-[80%] h-[80%] bg-white rounded-full flex items-center justify-center overflow-hidden">
+                            <PlayerAvatar
+                              activeSkin={activeSkin}
+                              customPfp={customPfp}
+                              variant="token"
+                              accentColor={activeTheme.accentColor}
+                            />
                           </div>
                         </motion.div>
                       </motion.div>
